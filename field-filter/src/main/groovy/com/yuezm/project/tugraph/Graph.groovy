@@ -4,6 +4,7 @@ package com.yuezm.project.tugraph
 import cn.hutool.json.JSONUtil
 import com.yuezm.project.common.SnowFlakeWorker
 import groovy.json.JsonSlurper
+import org.neo4j.driver.Result
 import org.neo4j.driver.internal.InternalRelationship
 
 /**
@@ -152,7 +153,9 @@ class Graph implements Serializable{
                             }
                         }else {
                             if(it.getAnnotation(Field.class).exist()){
-                                data."${it.getName()}" = it.get(n)
+                                if(it.get(n)){
+                                    data."${it.getName()}" = it.get(n)
+                                }
                             }
                         }
                     }
@@ -176,11 +179,8 @@ class Graph implements Serializable{
 
             }
 
-            if(edgeList.size() == 0){
-                return true
-            }
             TuGraphDriver.doExecute { TuGraphDriver d ->
-                edgeList.each { Edge e ->
+                edgeList?.each { Edge e ->
                     if(!e.edge_name){
                         e.edge_name = e.getClass().getName()
                     }
@@ -260,7 +260,9 @@ class Graph implements Serializable{
                     fields.each {
                         it.setAccessible(true)
                         if(it.getAnnotation(Field.class).exist()){
-                            data."${it.getName()}" = it.get(e)
+                            if(it.get(e)){
+                                data."${it.getName()}" = it.get(e)
+                            }
                         }
                     }
                     Map<String, List<Map<String, Object>>> belongMap = [:]
@@ -416,4 +418,47 @@ class Graph implements Serializable{
             return list
         }
     }
+
+
+    /**
+     * 以当前节点为准,向下查询所有点(包含自己)
+     * @param nodeName
+     * @return
+     */
+    List<? extends Node> getPositiveNodes(String nodeName){
+        assert name != null && name.length() > 0 : "graph name not found"
+        assert nodeName != null && nodeName.length() > 0 : "nodeName not found"
+        return TuGraphDriver.doExecute2 { TuGraphDriver d ->
+            List<Node> list = getNode(nodeName)
+            def result = d.getPositiveNodes(name, nodeName)
+            while (result.hasNext()){
+                def tagetNodeName = result.next().get(0).asString()
+                tagetNodeName = tagetNodeName.replace("[", "").replace("]", "")
+                list.addAll getNode(tagetNodeName)
+            }
+            return list
+        }
+    }
+
+    /**
+     * 以当前节点为准,向上查询所有点（包含自己）
+     * @param nodeName
+     * @return
+     */
+    List<? extends Node> getNegativeNodes(String nodeName) {
+        assert name != null && name.length() > 0 : "graph name not found"
+        assert nodeName != null && nodeName.length() > 0 : "nodeName not found"
+        return TuGraphDriver.doExecute2 { TuGraphDriver d ->
+            List<Node> list = getNode(nodeName)
+            def result = d.getNegativeNodes(name, nodeName)
+            while (result.hasNext()) {
+                def tagetNodeName = result.next().get(0).asString()
+                tagetNodeName = tagetNodeName.replace("[", "").replace("]", "")
+                list.addAll getNode(tagetNodeName)
+            }
+            return list
+        }
+    }
+
+
 }

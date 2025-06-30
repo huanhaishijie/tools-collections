@@ -508,20 +508,44 @@ class TuGraphDriver {
 
 
     /**
-     * 获取当前节点向后的链路
+     * 根据当前节点，正向查询后面的所有节点
      * @param dbName
      * @param nodeName
      */
-    TuGraphDriver getNodeLinks(String dbName = null, String nodeName){
+    def getPositiveNodes(String dbName = null, String nodeName) {
         assert nodeName != null && nodeName.trim().length() > 0: "nodeName is null"
         return doExecute2 { TuGraphDriver d ->
             if (dbName) {
-                d.session(SessionConfig.forDatabase(dbName)).run("MATCH (n:$nodeName)-[r]->() RETURN r")
-                return
+                def res = d.session(SessionConfig.forDatabase(dbName)).run("MATCH (startNode:$nodeName)-[*..999]->(n1)\n" +
+                        "WHERE NOT startNode = n1\n" +
+                        "RETURN DISTINCT labels(n1) AS label")
+                return res
             }
-            d.session(d.sessionConfig).run("MATCH (n:$nodeName)-[r]->() RETURN r")
+            return d.session(d.sessionConfig).run("MATCH (startNode:$nodeName)-[*..999]->(n1)\n" +
+                    "WHERE NOT startNode = n1\n" +
+                    "RETURN DISTINCT labels(n1) AS label")
         }
     }
 
 
+    /**
+     * 根据当前节点，反向查询前面的所有数据
+     * @param dbName
+     * @param nodeName
+     * @return
+     */
+    def getNegativeNodes(String dbName = null, String nodeName) {
+        assert nodeName != null && nodeName.trim().length() > 0: "nodeName is null"
+        return doExecute2 { TuGraphDriver d ->
+            if (dbName) {
+                def res = d.session(SessionConfig.forDatabase(dbName)).run("MATCH (n1)-[*..999]->(endNode:$nodeName)\n" +
+                        "WHERE NOT n1 = endNode\n" +
+                        "RETURN DISTINCT labels(n1) AS label")
+                return res
+            }
+            return d.session(d.sessionConfig).run("MATCH (n1)-[*..999]->(endNode:$nodeName)\n" +
+                    "WHERE NOT n1 = endNode\n" +
+                    "RETURN DISTINCT labels(n1) AS label")
+        }
+    }
 }
