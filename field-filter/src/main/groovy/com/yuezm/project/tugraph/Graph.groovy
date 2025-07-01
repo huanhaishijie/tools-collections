@@ -377,7 +377,7 @@ class Graph implements Serializable{
      * @param nodeName
      * @return
      */
-    List<? extends Node> getNode(String nodeName){
+    List<? extends Node> getNode(String nodeName, boolean isLoadEdge = false){
         assert name != null && name.length() > 0 : "graph name not found"
         assert nodeName != null && nodeName.length() > 0 : "nodeName not found"
         return TuGraphDriver.doExecute2 { TuGraphDriver d ->
@@ -389,6 +389,16 @@ class Graph implements Serializable{
                     proxyData = resNode.asMap()
                     node_name = nodeName
                 }}
+                if(isLoadEdge){
+                    def resEdges = d.getInEdgeByVertex(name, nodeName)
+                    while (resEdges.hasNext()){
+                        def resEdge = resEdges.next().get(0).asString()
+                        resEdge = resEdge.replace("[", "").replace("]", "")
+                        n.edgeList.addAll getEdge(resEdge)
+                    }
+                }
+
+
                 resData << n
             }
             return resData
@@ -429,7 +439,7 @@ class Graph implements Serializable{
         assert name != null && name.length() > 0 : "graph name not found"
         assert nodeName != null && nodeName.length() > 0 : "nodeName not found"
         return TuGraphDriver.doExecute2 { TuGraphDriver d ->
-            List<Node> list = getNode(nodeName)
+            List<Node> list = getNode(nodeName, true)
             def result = d.getPositiveNodes(name, nodeName)
             while (result.hasNext()){
                 def tagetNodeName = result.next().get(0).asString()
@@ -449,7 +459,7 @@ class Graph implements Serializable{
         assert name != null && name.length() > 0 : "graph name not found"
         assert nodeName != null && nodeName.length() > 0 : "nodeName not found"
         return TuGraphDriver.doExecute2 { TuGraphDriver d ->
-            List<Node> list = getNode(nodeName)
+            List<Node> list = getNode(nodeName, true)
             def result = d.getNegativeNodes(name, nodeName)
             while (result.hasNext()) {
                 def tagetNodeName = result.next().get(0).asString()

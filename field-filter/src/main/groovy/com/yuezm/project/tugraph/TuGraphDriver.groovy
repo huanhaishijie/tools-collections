@@ -516,7 +516,7 @@ class TuGraphDriver {
         assert nodeName != null && nodeName.trim().length() > 0: "nodeName is null"
         return doExecute2 { TuGraphDriver d ->
             if (dbName) {
-                def res = d.session(SessionConfig.forDatabase(dbName)).run("MATCH (startNode:$nodeName)-[*..999]->(n1)\n" +
+                def res = d.session(SessionConfig.forDatabase(dbName)).run("MATCH (startNode:$nodeName)-[*..$depth]->(n1)\n" +
                         "WHERE NOT startNode = n1\n" +
                         "RETURN DISTINCT labels(n1) AS label")
                 return res
@@ -538,7 +538,7 @@ class TuGraphDriver {
         assert nodeName != null && nodeName.trim().length() > 0: "nodeName is null"
         return doExecute2 { TuGraphDriver d ->
             if (dbName) {
-                def res = d.session(SessionConfig.forDatabase(dbName)).run("MATCH (n1)-[*..999]->(endNode:$nodeName)\n" +
+                def res = d.session(SessionConfig.forDatabase(dbName)).run("MATCH (n1)-[*..$depth]->(endNode:$nodeName)\n" +
                         "WHERE NOT n1 = endNode\n" +
                         "RETURN DISTINCT labels(n1) AS label")
                 return res
@@ -548,5 +548,26 @@ class TuGraphDriver {
                     "RETURN DISTINCT labels(n1) AS label")
         }
     }
+
+
+    /**
+     * 获取根据当前节点，获取以当前节点作为入边的边
+     * @param dbName
+     * @param nodeName
+     */
+    def getInEdgeByVertex(String dbName = null, String nodeName) {
+        assert nodeName != null && nodeName.trim().length() > 0: "nodeName is null"
+        return doExecute2 { TuGraphDriver d ->
+            if (dbName) {
+                def res = d.session(SessionConfig.forDatabase(dbName)).run("MATCH (n:$nodeName)-[r]->()\n" +
+                        "RETURN DISTINCT labels(r) AS label")
+                return res
+            }
+            return d.session(d.sessionConfig).run("MATCH (n:$nodeName)-[r]->()\n" +
+                    "RETURN DISTINCT labels(r) AS label")
+        }
+    }
+
+
 
 }
