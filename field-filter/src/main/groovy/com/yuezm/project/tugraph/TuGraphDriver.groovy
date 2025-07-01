@@ -512,7 +512,7 @@ class TuGraphDriver {
      * @param dbName
      * @param nodeName
      */
-    def getPositiveNodes(String dbName = null, String nodeName) {
+    def getPositiveNodes(String dbName = null, String nodeName, Integer depth = 999) {
         assert nodeName != null && nodeName.trim().length() > 0: "nodeName is null"
         return doExecute2 { TuGraphDriver d ->
             if (dbName) {
@@ -521,7 +521,7 @@ class TuGraphDriver {
                         "RETURN DISTINCT labels(n1) AS label")
                 return res
             }
-            return d.session(d.sessionConfig).run("MATCH (startNode:$nodeName)-[*..999]->(n1)\n" +
+            return d.session(d.sessionConfig).run("MATCH (startNode:$nodeName)-[*..$depth]->(n1)\n" +
                     "WHERE NOT startNode = n1\n" +
                     "RETURN DISTINCT labels(n1) AS label")
         }
@@ -534,7 +534,7 @@ class TuGraphDriver {
      * @param nodeName
      * @return
      */
-    def getNegativeNodes(String dbName = null, String nodeName) {
+    def getNegativeNodes(String dbName = null, String nodeName, Integer depth = 999) {
         assert nodeName != null && nodeName.trim().length() > 0: "nodeName is null"
         return doExecute2 { TuGraphDriver d ->
             if (dbName) {
@@ -543,9 +543,10 @@ class TuGraphDriver {
                         "RETURN DISTINCT labels(n1) AS label")
                 return res
             }
-            return d.session(d.sessionConfig).run("MATCH (n1)-[*..999]->(endNode:$nodeName)\n" +
+            return d.session(d.sessionConfig).run("MATCH (n1)-[*..$depth]->(endNode:$nodeName)\n" +
                     "WHERE NOT n1 = endNode\n" +
                     "RETURN DISTINCT labels(n1) AS label")
         }
     }
+
 }
