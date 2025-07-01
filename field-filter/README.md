@@ -180,14 +180,14 @@ getVertexAllData(String graphName, String nodeName)
 isExistEdge(String graphName, String edgeName)
 //19.获取边所有数据
 getEdgeAllData(String graphName, String edgeName)
-//20.批量upsert点数据(相邻节点主键重名有问题)
+//20.批量upsert点数据
 upsertNodeData(String graphName ,String nodeName, List<T> datas)
-//21.批量upsert边数据
-    (String graphName, String edgeName, List<T> nodes, List<String> props, List<T> datas)
-//22.清空节点数据 
+//21.清空节点数据 
 cleanNodeData(String graphName ,String nodeName)
-//23.批量upsert边数据
+//22.批量upsert边数据(相邻节点主键重名有问题)
 upsertEdgeData(String graphName, String edgeName, List<T> nodes, List<T> datas)
+//23.批量upsert边数据
+upsertEdgeData2(String graphName, String edgeName, List<T> nodes, List<String> props, List<T> datas)
 //24.清除边数据
 cleanEdgeData(String graphName, String edgeName)
 //25.根据当前节点，正向查询后面的所有节点
