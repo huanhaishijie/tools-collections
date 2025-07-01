@@ -412,16 +412,21 @@ class Graph implements Serializable{
      * @return
      */
     List<? extends Edge> getEdge(String edgeName){
+
         assert name != null && name.length() > 0 : "graph name not found"
         assert edgeName != null && edgeName.length() > 0 : "edgeName not found"
         return TuGraphDriver.doExecute2 { TuGraphDriver d ->
             def res = d.getEdgeAllData(name, edgeName)
+            def schema = d.getEdgeSchema(edgeName)
+            def map = schema.next().get(0).asMap()
             List<Edge> list = []
             while (res.hasNext()){
                 def resEdge = res.next().get(0).asRelationship() as InternalRelationship
                 Edge e = new Edge() {{
                     proxyData = resEdge.asMap()
                     edge_name = edgeName
+                    fromNode_name = map.constraints[0][0]
+                    toNode_name = map.constraints[0][1]
                 }}
                 list << e
             }
@@ -444,7 +449,7 @@ class Graph implements Serializable{
             while (result.hasNext()){
                 def tagetNodeName = result.next().get(0).asString()
                 tagetNodeName = tagetNodeName.replace("[", "").replace("]", "")
-                list.addAll getNode(tagetNodeName)
+                list.addAll getNode(tagetNodeName, true)
             }
             return list
         }
@@ -464,7 +469,7 @@ class Graph implements Serializable{
             while (result.hasNext()) {
                 def tagetNodeName = result.next().get(0).asString()
                 tagetNodeName = tagetNodeName.replace("[", "").replace("]", "")
-                list.addAll getNode(tagetNodeName)
+                list.addAll getNode(tagetNodeName, true)
             }
             return list
         }
