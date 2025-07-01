@@ -100,7 +100,7 @@ Integer age
 1.2 构建图数据 创建图
 ```angular2html
 
-def driver = new TuGraphDriver(hostUrl: '192.168.110.10', password: 'yuezhiming@Q123')
+def driver = new TuGraphDriver(hostUrl: '*.*.*.*', password: '****')
 //1.注册图数据源
 TuGraphConfig.instance.register(driver)
 //2.切换当前线程使用的图数据源
