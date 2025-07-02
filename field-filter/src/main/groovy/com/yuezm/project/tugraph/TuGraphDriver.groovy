@@ -206,10 +206,9 @@ class TuGraphDriver {
         assert nodeName != null && nodeName.trim().length() > 0: "nodeName is null"
         return doExecute2 { TuGraphDriver d ->
             if (dbName) {
-                d.session(SessionConfig.forDatabase(dbName)).run("CALL db.getVertexSchema('$nodeName')")
-                return
+                return d.session(SessionConfig.forDatabase(dbName)).run("CALL db.getVertexSchema('$nodeName')")
             }
-            d.session(d.sessionConfig).run("CALL db.getVertexSchema('$nodeName')")
+            return d.session(d.sessionConfig).run("CALL db.getVertexSchema('$nodeName')")
         }
     }
 
@@ -260,10 +259,9 @@ class TuGraphDriver {
         assert edgeName != null && edgeName.trim().length() > 0: "edgeName is null"
         return doExecute2 { TuGraphDriver d ->
             if (dbName) {
-                d.session(SessionConfig.forDatabase(dbName)).run("CALL db.getEdgeSchema('$edgeName')")
-                return
+                return d.session(SessionConfig.forDatabase(dbName)).run("CALL db.getEdgeSchema('$edgeName')")
             }
-            d.session(d.sessionConfig).run("CALL db.getEdgeSchema('$edgeName')")
+            return d.session(d.sessionConfig).run("CALL db.getEdgeSchema('$edgeName')")
         }
     }
 

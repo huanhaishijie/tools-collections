@@ -417,8 +417,9 @@ class Graph implements Serializable{
         assert edgeName != null && edgeName.length() > 0 : "edgeName not found"
         return TuGraphDriver.doExecute2 { TuGraphDriver d ->
             def res = d.getEdgeAllData(name, edgeName)
-            def schema = d.getEdgeSchema(edgeName)
-            def map = schema.next().get(0).asMap()
+            def schema = d.getEdgeSchema(name, edgeName)
+            def json = schema.next().get(0).asString()
+            def map = new JsonSlurper().parseText(json)
             List<Edge> list = []
             while (res.hasNext()){
                 def resEdge = res.next().get(0).asRelationship() as InternalRelationship
