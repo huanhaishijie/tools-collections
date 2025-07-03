@@ -5,6 +5,7 @@ import cn.hutool.json.JSONUtil
 import com.yuezm.project.common.SnowFlakeWorker
 import groovy.json.JsonSlurper
 import org.neo4j.driver.Result
+import org.neo4j.driver.SessionConfig
 import org.neo4j.driver.internal.InternalRelationship
 
 /**
@@ -475,6 +476,80 @@ class Graph implements Serializable{
             return list
         }
     }
+
+    /**
+     * 根据节点生成条件，删除节点
+     * @param node
+     * @return
+     */
+    <T extends Node> Boolean deleteNode(T node){
+        assert node != null : " node is not  null "
+        assert name != null && name.length() > 0 : "graph name not found"
+        def clazz = node.class
+        java.lang.reflect.Field[] fields = clazz.getFields() + clazz.getDeclaredFields()
+        fields = fields.findAll {
+            return !(it.getName().contains("\$") || it.getName().equals("metaClass") || it.getName().equals("node_name") || it.getName().equals("edgeList") || it.getName().equals("proxyData"))
+        }
+        fields = fields.findAll{
+            it.setAccessible(true)
+            def val = it.get(node)
+            if(val == null){
+                return false
+            }
+            return true
+        }
+        assert fields.size() > 0 : "edge properties not found"
+        try {
+            String cypher = "match (n:$node.node_name { ${ fields.collect { it.getName() + ": " + node."${it.getName()}" }.join(",") } }) detach delete n"
+            session(SessionConfig.forDatabase(name)).run(cypher)
+        }catch (Exception e) {
+            e.printStackTrace()
+            return false
+        }
+        return true
+    }
+
+
+    /**
+     * 根据边生成条件， 删除节点
+     * @param edge
+     * @return
+     */
+    <T extends Edge> Boolean deleteEdge(T edge){
+        assert edge != null : " edge is not  null "
+        assert name != null && name.length() > 0 : "graph name not found"
+        def clazz = edge.class
+        java.lang.reflect.Field[] fields = clazz.getFields() + clazz.getDeclaredFields()
+        fields = fields.findAll {
+            return !(it.getName().contains("\$") || it.getName().equals("metaClass") || it.getName().equals("node_name") || it.getName().equals("edgeList") || it.getName().equals("proxyData") || it.getName().equals("fromNode_name") || it.getName().equals("toNode_name") || it.getName().equals("self_expand") || it.getName().equals("toBindNode"))
+        }
+        fields = fields.findAll{
+            it.setAccessible(true)
+            def val = it.get(edge)
+            if(val == null){
+                return false
+            }
+            return true
+        }
+        assert fields.size() > 0 : "edge properties not found"
+
+        if(edge.getFromNode_name() == null){
+            def schema = TuGraphDriver.doExecute {}.getEdgeSchema(name, edge.getEdge_name())
+            def json = schema.next().get(0).asString()
+            def map = new JsonSlurper().parseText(json)
+            edge.fromNode_name = map.constraints[0][0]
+            edge.toNode_name = map.constraints[0][1]
+        }
+        try {
+            String cypher = "match (n:$edge.fromNode_name)-[r:$edge.edge_name { ${ fields.collect { it.getName() + ": " + edge."${it.getName()}" }.join(",") } }]->(m:$edge.toNode_name) detach delete r"
+            session(SessionConfig.forDatabase(name)).run(cypher)
+        }catch (Exception e) {
+            e.printStackTrace()
+            return false
+        }
+        return true
+    }
+
 
 
 }

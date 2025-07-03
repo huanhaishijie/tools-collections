@@ -196,6 +196,7 @@ getPositiveNodes(String graphName, String edgeName)
 getNegativeNodes(String graphName, String edgeName)
 
 
+
 （二）、整合提供Graph
 //1.整图支持化
 persistence()
@@ -209,6 +210,10 @@ List<? extends Edge> getEdge(String edgeName)
 List<? extends Node> getPositiveNodes(String nodeName)
 //6.以当前节点为准,向上查询所有点(包含自己)
 List<? extends Node> getNegativeNodes(String nodeName)
+//7.根据节点生成条件，删除节点
+<T extends Node> Boolean deleteNode(T node)
+//8.根据边生成条件，删除边
+<T extends Edge> Boolean deleteEdge(T edge)
 
 (三) 底层cypher开放
 graph.driver.session().run("CALL db.dropDB()")         
