@@ -198,7 +198,7 @@ getNegativeNodes(String graphName, String edgeName)
 
 
 （二）、整合提供Graph
-//1.整图支持化
+//1.整图持久化
 persistence()
 //2.读取整图数据
 static Graph read(String graphName)
