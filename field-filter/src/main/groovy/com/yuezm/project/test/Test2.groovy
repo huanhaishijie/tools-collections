@@ -28,16 +28,16 @@ println map2
 
 ////3.删除边
 //graph.deleteLabel('')
-
-def edge = new Edge(){
-    String role
-    {
-        edge_name = 'acted_in'
-        role = 'Trinity'
-    }
-}
-Graph graph2 = new Graph(name: 'Movie_508E')
-graph2.deleteEdge(edge)
+//
+//def edge = new Edge(){
+//    String role
+//    {
+//        edge_name = 'acted_in'
+//        role = 'Trinity'
+//    }
+//}
+//Graph graph2 = new Graph(name: 'Movie_508E')
+//graph2.deleteEdge(edge)
 
 
 
