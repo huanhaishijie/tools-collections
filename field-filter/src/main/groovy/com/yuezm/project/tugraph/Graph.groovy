@@ -1,10 +1,8 @@
 package com.yuezm.project.tugraph
 
-
 import cn.hutool.json.JSONUtil
 import com.yuezm.project.common.SnowFlakeWorker
 import groovy.json.JsonSlurper
-import org.neo4j.driver.Result
 import org.neo4j.driver.SessionConfig
 import org.neo4j.driver.internal.InternalRelationship
 
@@ -27,8 +25,7 @@ class Graph implements Serializable{
      * 持久化
      * @return
      */
-    Boolean persistence(){
-
+    Boolean persistence(boolean isAllUpdate = false){
         Map<String, List<Map<String, Object>>> nodeData = [:]
         Map<String, Map<String, List<Map<String, Object>>>> edgeData = [:]
         Map<String, String> nodePrimary = [:]
@@ -138,6 +135,7 @@ class Graph implements Serializable{
                         }
                         return false
                     }
+                    boolean  nodeExist = false
                     fields.each {
                         if(it.getAnnotation(Id.class)){
                             def id =  it.get(n)
@@ -147,6 +145,9 @@ class Graph implements Serializable{
                                     id = Long.parseLong(id)
                                 }
                                 it.set(n, id)
+                            }
+                            if(getNodeById(n.node_name, id, it.getName())){
+                                nodeExist = true
                             }
                             data."${it.getName()}" = id
                             n?.edgeList?.each {
@@ -161,10 +162,12 @@ class Graph implements Serializable{
                         }
                     }
 //                    d.upsertNodeData(name, n.node_name, [data])
-                    if(nodeData.containsKey(n.node_name)){
-                        nodeData."$n.node_name" << data
-                    }else {
-                        nodeData."$n.node_name" = [data]
+                    if(!nodeExist){
+                        if(nodeData.containsKey(n.node_name)){
+                            nodeData."$n.node_name" << data
+                        }else {
+                            nodeData."$n.node_name" = [data]
+                        }
                     }
                     n?.edgeList?.each { Edge e ->
                         e.fromNode_name = n.node_name
@@ -283,7 +286,7 @@ class Graph implements Serializable{
 
             TuGraphDriver.doExecute { TuGraphDriver d ->
                 nodeData?.each {k, v ->
-                    d.cleanNodeData(name, k)
+//                    d.cleanNodeData(name, k)
                     d.upsertNodeData(name, k, v)
                 }
                 edgeData?.each {k, v ->
@@ -500,8 +503,8 @@ class Graph implements Serializable{
         }
         assert fields.size() > 0 : "edge properties not found"
         try {
-            String cypher = "match (n:$node.node_name { ${ fields.collect { it.getName() + ": " + node."${it.getName()}" }.join(",") } }) detach delete n"
-            session(SessionConfig.forDatabase(name)).run(cypher)
+            String cypher = "match (n:$node.node_name { ${ fields.collect { it.getName() + + ": '" + node."${it.getName()}" + "'" }.join(",") } }) detach delete n"
+            driver.session(SessionConfig.forDatabase(name)).run(cypher)
         }catch (Exception e) {
             e.printStackTrace()
             return false
@@ -541,8 +544,10 @@ class Graph implements Serializable{
             edge.toNode_name = map.constraints[0][1]
         }
         try {
-            String cypher = "match (n:$edge.fromNode_name)-[r:$edge.edge_name { ${ fields.collect { it.getName() + ": " + edge."${it.getName()}" }.join(",") } }]->(m:$edge.toNode_name) detach delete r"
-            session(SessionConfig.forDatabase(name)).run(cypher)
+
+            String cypher = "match (n:$edge.fromNode_name)-[r:$edge.edge_name ]->(m:$edge.toNode_name)" +
+                    " where r." + fields.collect { it.getName()  + " = '" + edge."${it.getName()}" + "'" }.join(" and r.") + " delete r"
+            driver.session(SessionConfig.forDatabase(name)).run(cypher)
         }catch (Exception e) {
             e.printStackTrace()
             return false
@@ -550,6 +555,26 @@ class Graph implements Serializable{
         return true
     }
 
+
+    <T extends Serializable> Node getNodeById(String nodeName,  T id, String idName = "id"){
+        assert name != null && name.length() > 0 : "graph name not found"
+        assert nodeName != null && nodeName.length() > 0 : "nodeName not found"
+        return TuGraphDriver.doExecute2 { TuGraphDriver d ->
+            String cypher = "match (n:$nodeName {$idName : '$id'})   return n"
+            try {
+                def result = d.session(SessionConfig.forDatabase(name)).run(cypher)
+                def resNode = result.next().get(0).asNode()
+                Node n = new Node() {{
+                    proxyData = resNode.asMap()
+                    node_name = nodeName
+                }}
+                return n
+            }catch (Exception e) {
+               return null
+            }
+
+        }
+    }
 
 
 }
