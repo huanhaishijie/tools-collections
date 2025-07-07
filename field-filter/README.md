@@ -191,9 +191,9 @@ upsertEdgeData2(String graphName, String edgeName, List<T> nodes, List<String> p
 //24.清除边数据
 cleanEdgeData(String graphName, String edgeName)
 //25.根据当前节点，正向查询后面的所有节点
-getPositiveNodes(String graphName, String edgeName)
+getPositiveNodes(String graphName, String nodeName)
 //26.根据当前节点，反向查询前面的所有节点
-getNegativeNodes(String graphName, String edgeName)
+getNegativeNodes(String graphName, String nodeName)
 
 
 
