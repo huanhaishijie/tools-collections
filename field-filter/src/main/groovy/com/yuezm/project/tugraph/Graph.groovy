@@ -3,6 +3,7 @@ package com.yuezm.project.tugraph
 import cn.hutool.json.JSONUtil
 import com.yuezm.project.common.SnowFlakeWorker
 import groovy.json.JsonSlurper
+import org.apache.groovy.util.Maps
 import org.neo4j.driver.SessionConfig
 import org.neo4j.driver.internal.InternalRelationship
 
@@ -14,35 +15,35 @@ import org.neo4j.driver.internal.InternalRelationship
  * @description ${TODO}
  * @date 2025/6/27 11:38
  */
-class Graph implements Serializable{
+class Graph implements Serializable {
     String name
     List<? extends Node> nodeList
 
     @Delegate
-    TuGraphDriver driver = TuGraphDriver.doExecute{}
+    TuGraphDriver driver = TuGraphDriver.doExecute {}
 
     /**
      * 持久化
      * @return
      */
-    Boolean persistence(boolean isAllUpdate = false){
+    Boolean persistence(boolean isAllUpdate = false) {
         Map<String, List<Map<String, Object>>> nodeData = [:]
         Map<String, Map<String, List<Map<String, Object>>>> edgeData = [:]
         Map<String, String> nodePrimary = [:]
         try {
             TuGraphDriver.doExecute { TuGraphDriver d ->
-                if(!d.existsGraph(name)){
+                if (!d.existsGraph(name)) {
                     d.createGraph(name)
                 }
             }
-            if(!nodeList || nodeList.size() == 0){
+            if (!nodeList || nodeList.size() == 0) {
                 return true
             }
             List<Edge> edgeList = []
 
             TuGraphDriver.doExecute { TuGraphDriver d ->
                 nodeList.each { Node n ->
-                    if(!n.node_name){
+                    if (!n.node_name) {
                         n.node_name = n.getClass().getName()
                     }
 
@@ -55,15 +56,15 @@ class Graph implements Serializable{
                     fields.find(it -> it.getAnnotation(Id.class)).with {
                         nodePrimary."${n.node_name}" = it.getName()
                     }
-                    if(!f){
-                        Map<String, Object> node = [label: n.node_name, type: 'VERTEX', detach_property: true, properties:[]]
+                    if (!f) {
+                        Map<String, Object> node = [label: n.node_name, type: 'VERTEX', detach_property: true, properties: []]
                         //1.找出主键
-                        java.lang.reflect.Field[] primary = fields.findAll {it.getAnnotation(Id.class)}
-                        primary.each {it.setAccessible(true)}
-                        if(primary.size() == 0){
+                        java.lang.reflect.Field[] primary = fields.findAll { it.getAnnotation(Id.class) }
+                        primary.each { it.setAccessible(true) }
+                        if (primary.size() == 0) {
                             throw new RuntimeException("primary key not found")
                         }
-                        if(primary.size() > 1){
+                        if (primary.size() > 1) {
                             throw new RuntimeException("more than one primary key")
                         }
                         fields.each {
@@ -76,43 +77,43 @@ class Graph implements Serializable{
                             String type = ""
                             def a1 = it.getAnnotation(Id.class)
                             def a2 = it.getAnnotation(Field.class)
-                            if(a2!=null){
-                                if(a2.isIndex()){
+                            if (a2 != null) {
+                                if (a2.isIndex()) {
                                     isIndex = true
                                 }
-                                if(a2.unique()){
+                                if (a2.unique()) {
                                     isUnique = true
                                 }
                                 isOptional = a2.optional()
                                 exist = a2.exist()
                                 type = a2.columnType()
-                                if(type.trim().length() == 0){
+                                if (type.trim().length() == 0) {
                                     throw new RuntimeException("columnType not found")
                                 }
-                                if(a2.columnName().trim().length() != 0){
+                                if (a2.columnName().trim().length() != 0) {
                                     name = a2.columnName()
                                 }
                             }
-                            if(a1!=null){
+                            if (a1 != null) {
                                 isIndex = true
                                 isUnique = true
                                 node.primary = name
-                                if(!exist){
+                                if (!exist) {
                                     throw new RuntimeException("primary key exist = false condition mutex")
                                 }
                             }
-                            if(!exist){
+                            if (!exist) {
                                 return
                             }
                             def prop = [
-                                    name: name,
-                                    type: type,
+                                    name    : name,
+                                    type    : type,
                                     optional: isOptional,
                             ]
-                            if(isIndex){
+                            if (isIndex) {
                                 prop.index = true
                             }
-                            if(isUnique){
+                            if (isUnique) {
                                 prop.unique = true
                             }
                             node.properties << prop
@@ -127,54 +128,64 @@ class Graph implements Serializable{
                     fields.findAll {
                         it.setAccessible(true)
                         def annotation = it.getAnnotation(Field.class)
-                        if(it.getAnnotation(Id.class)){
+                        if (it.getAnnotation(Id.class)) {
                             return true
                         }
-                        if(annotation?.exist()){
+                        if (annotation?.exist()) {
                             return true
                         }
                         return false
                     }
-                    boolean  nodeExist = false
+                    boolean nodeExist = false
                     fields.each {
-                        if(it.getAnnotation(Id.class)){
-                            def id =  it.get(n)
-                            if(!id){
+                        if (it.getAnnotation(Id.class)) {
+                            def id = it.get(n)
+                            if (!id) {
                                 id = SnowFlakeWorker.idGenerate()
-                                if(!it.getType().name.contains("String")){
+                                if (!it.getType().name.contains("String")) {
                                     id = Long.parseLong(id)
                                 }
                                 it.set(n, id)
                             }
-                            if(getNodeById(n.node_name, id, it.getName())){
+                            def findNode = getNodeById(n.node_name, id, it.getName())
+                            if (findNode != null) {
                                 nodeExist = true
                             }
                             data."${it.getName()}" = id
                             n?.edgeList?.each {
                                 it.self_expand.fromPrimaryId = id
                             }
-                        }else {
-                            if(it.getAnnotation(Field.class).exist()){
-                                if(it.get(n)){
+                        } else {
+                            if (it.getAnnotation(Field.class).exist()) {
+                                if (it.get(n)) {
                                     data."${it.getName()}" = it.get(n)
                                 }
                             }
                         }
                     }
 //                    d.upsertNodeData(name, n.node_name, [data])
-                    if(!nodeExist){
-                        if(nodeData.containsKey(n.node_name)){
+                    if (isAllUpdate) {
+                        if (nodeData.containsKey(n.node_name)) {
                             nodeData."$n.node_name" << data
-                        }else {
+                        } else {
                             nodeData."$n.node_name" = [data]
                         }
+                    } else {
+                        if (!nodeExist) {
+                            if (nodeData.containsKey(n.node_name)) {
+                                nodeData."$n.node_name" << data
+                            } else {
+                                nodeData."$n.node_name" = [data]
+                            }
+                        }
                     }
+
                     n?.edgeList?.each { Edge e ->
                         e.fromNode_name = n.node_name
-                        if(!e.toNode_name || e.toNode_name.trim().length() == 0){
+                        if (!e.toNode_name || e.toNode_name.trim().length() == 0) {
                             throw new RuntimeException("$n.node_name toNode_name not found")
                         }
-                        if(!e.edge_name || e.edge_name.trim().length() == 0){
+                        if (!e.edge_name || e.edge_name.trim().length() == 0) {
                             e.edge_name = e.fromNode_name + "_" + e.toNode_name
                         }
                         edgeList << e
@@ -185,7 +196,7 @@ class Graph implements Serializable{
 
             TuGraphDriver.doExecute { TuGraphDriver d ->
                 edgeList?.each { Edge e ->
-                    if(!e.edge_name){
+                    if (!e.edge_name) {
                         e.edge_name = e.getClass().getName()
                     }
                     def f = d.isExistEdge(name, e.edge_name)
@@ -194,8 +205,8 @@ class Graph implements Serializable{
                     fields = fields.findAll {
                         return !(it.getName().contains("\$") || it.getName().equals("metaClass") || it.getName().equals("edge_name") || it.getName().equals("toNode_name") || it.getName().equals("fromNode_name") || it.getName().equals("proxyData") || it.getName().equals("toBindNode") || it.getName().equals("self_expand"))
                     }
-                    if(!f){
-                        Map<String, Object> edge = [label: e.edge_name, type: 'EDGE', detach_property: true, properties:[], constraints:[[e.fromNode_name, e.toNode_name]]]
+                    if (!f) {
+                        Map<String, Object> edge = [label: e.edge_name, type: 'EDGE', detach_property: true, properties: [], constraints: [[e.fromNode_name, e.toNode_name]]]
                         fields.each {
                             it.setAccessible(true)
 
@@ -207,35 +218,35 @@ class Graph implements Serializable{
                             String type = ""
 
                             def a2 = it.getAnnotation(Field.class)
-                            if(a2!=null){
-                                if(a2.isIndex()){
+                            if (a2 != null) {
+                                if (a2.isIndex()) {
                                     isIndex = true
                                 }
-                                if(a2.unique()){
+                                if (a2.unique()) {
                                     isUnique = true
                                 }
                                 isOptional = a2.optional()
                                 exist = a2.exist()
                                 type = a2.columnType()
-                                if(type.trim().length() == 0){
+                                if (type.trim().length() == 0) {
                                     throw new RuntimeException("columnType not found")
                                 }
-                                if(a2.columnName().trim().length() != 0){
+                                if (a2.columnName().trim().length() != 0) {
                                     name = a2.columnName()
                                 }
                             }
-                            if(!exist){
+                            if (!exist) {
                                 return
                             }
                             def prop = [
-                                    name: name,
-                                    type: type,
+                                    name    : name,
+                                    type    : type,
                                     optional: isOptional,
                             ]
-                            if(isIndex){
+                            if (isIndex) {
                                 prop.index = true
                             }
-                            if(isUnique){
+                            if (isUnique) {
                                 prop.unique = true
                             }
                             edge.properties << prop
@@ -248,35 +259,35 @@ class Graph implements Serializable{
                     data.from_val = e?.self_expand?.fromPrimaryId
                     Node node = e?.toBindNode
 
-                    if(node == null){
+                    if (node == null) {
                         throw new RuntimeException("toBindNode not null")
                     }
-                    java.lang.reflect.Field field = (node.class.getFields() + node.class.getDeclaredFields()).findAll{
+                    java.lang.reflect.Field field = (node.class.getFields() + node.class.getDeclaredFields()).findAll {
                         return !(it.getName().contains("\$") || it.getName().equals("metaClass") || it.getName().equals("node_name") || it.getName().equals("edgeList") || it.getName().equals("proxyData"))
                     }.find {
                         it.isAnnotationPresent(Id.class)
                     }
-                    if(field){
+                    if (field) {
                         field.setAccessible(true)
                         data.to_val = field.get(node)
                     }
 
                     fields.each {
                         it.setAccessible(true)
-                        if(it.getAnnotation(Field.class).exist()){
-                            if(it.get(e)){
+                        if (it.getAnnotation(Field.class).exist()) {
+                            if (it.get(e)) {
                                 data."${it.getName()}" = it.get(e)
                             }
                         }
                     }
                     Map<String, List<Map<String, Object>>> belongMap = [:]
-                    if(!edgeData.containsKey(e.edge_name)){
+                    if (!edgeData.containsKey(e.edge_name)) {
                         edgeData.put(e.edge_name, belongMap)
-                    }else {
+                    } else {
                         belongMap = edgeData.get(e.edge_name)
                     }
-                    String key = e.fromNode_name +"@@"+ e.toNode_name
-                    if(!belongMap.containsKey(key)){
+                    String key = e.fromNode_name + "@@" + e.toNode_name
+                    if (!belongMap.containsKey(key)) {
                         belongMap."$key" = []
                     }
                     belongMap."$key" << data
@@ -285,28 +296,30 @@ class Graph implements Serializable{
 
 
             TuGraphDriver.doExecute { TuGraphDriver d ->
-                nodeData?.each {k, v ->
-//                    d.cleanNodeData(name, k)
+                nodeData?.each { k, v ->
+                    if (isAllUpdate) {
+                        d.cleanNodeData(name, k)
+                    }
                     d.upsertNodeData(name, k, v)
                 }
-                edgeData?.each {k, v ->
+                edgeData?.each { k, v ->
                     d.cleanEdgeData(name, k)
-                    v.each {k2, v2 ->
+                    v.each { k2, v2 ->
                         String[] orientation = k2.split("@@")
-                        def keys= v2[0].keySet()
+                        def keys = v2[0].keySet()
                         def props = []
                         keys.each {
-                            if(it == "from_val" || it == "to_val"){
+                            if (it == "from_val" || it == "to_val") {
                                 return
                             }
                             props << it
                         }
-                        d.upsertEdgeData2(name, k, [[type: orientation[0], key: nodePrimary[orientation[0]]], [type: orientation[1], key: nodePrimary[orientation[1]]]], props,  v2)
+                        d.upsertEdgeData2(name, k, [[type: orientation[0], key: nodePrimary[orientation[0]]], [type: orientation[1], key: nodePrimary[orientation[1]]]], props, v2)
                     }
                 }
             }
 
-        }catch (Exception e){
+        } catch (Exception e) {
             e.printStackTrace()
             return false
         }
@@ -318,13 +331,13 @@ class Graph implements Serializable{
      * @param graphName
      * @return
      */
-    static Graph read(String graphName){
+    static Graph read(String graphName) {
         JsonSlurper jsonSlurper = new JsonSlurper()
         def graph = new Graph(name: graphName, nodeList: [])
-        def res = TuGraphDriver.doExecute{ TuGraphDriver d ->
-            assert d.existsGraph(graphName) : "graph $graphName not found"
+        def res = TuGraphDriver.doExecute { TuGraphDriver d ->
+            assert d.existsGraph(graphName): "graph $graphName not found"
         }.getGraphSchema(graphName)
-        if(res.hasNext()){
+        if (res.hasNext()) {
             def resStr = res.next().get(0).asString()
 
             def obj = jsonSlurper.parseText(resStr)
@@ -334,7 +347,7 @@ class Graph implements Serializable{
             TuGraphDriver.doExecute { TuGraphDriver d ->
                 Map<String, Map<String, List<Edge>>> edgeData = [:]
                 res2.each { k, v ->
-                    switch (k){
+                    switch (k) {
                         case 'VERTEX':
                             v.each { n ->
                                 graph.nodeList.addAll graph.getNode(n.label as String)
@@ -342,11 +355,11 @@ class Graph implements Serializable{
                             break
                         case 'EDGE':
                             v.each { e ->
-                                if(!edgeData.containsKey(e.label)){
+                                if (!edgeData.containsKey(e.label)) {
                                     edgeData."$e.label" = [:]
                                 }
-                                String key = e.constraints[0][0] +"@@"+ e.constraints[0][1]
-                                if(!edgeData."$e.label".containsKey(key)){
+                                String key = e.constraints[0][0] + "@@" + e.constraints[0][1]
+                                if (!edgeData."$e.label".containsKey(key)) {
                                     edgeData."$e.label"."$key" = []
                                 }
                                 def edges = graph.getEdge(e.label as String)
@@ -363,12 +376,13 @@ class Graph implements Serializable{
                 def nodeMap = graph?.nodeList?.groupBy { it.node_name }
                 edgeData?.each { k, v ->
                     v.each {
-                        k2, v2 ->{
-                            def relations = k2.split("@@")
-                            if(nodeMap.containsKey(relations[0])){
-                                nodeMap.get(relations[0])[0].edgeList.addAll v2
+                        k2, v2 ->
+                            {
+                                def relations = k2.split("@@")
+                                if (nodeMap.containsKey(relations[0])) {
+                                    nodeMap.get(relations[0])[0].edgeList.addAll v2
+                                }
                             }
-                        }
                     }
                 }
             }
@@ -381,21 +395,23 @@ class Graph implements Serializable{
      * @param nodeName
      * @return
      */
-    List<? extends Node> getNode(String nodeName, boolean isLoadEdge = false){
-        assert name != null && name.length() > 0 : "graph name not found"
-        assert nodeName != null && nodeName.length() > 0 : "nodeName not found"
+    List<? extends Node> getNode(String nodeName, boolean isLoadEdge = false) {
+        assert name != null && name.length() > 0: "graph name not found"
+        assert nodeName != null && nodeName.length() > 0: "nodeName not found"
         return TuGraphDriver.doExecute2 { TuGraphDriver d ->
             def resData = []
             def res = d.getVertexAllData(name, nodeName)
-            while (res.hasNext()){
+            while (res.hasNext()) {
                 def resNode = res.next().get(0).asNode()
-                Node n = new Node() {{
-                    proxyData = resNode.asMap()
-                    node_name = nodeName
-                }}
-                if(isLoadEdge){
+                Node n = new Node() {
+                    {
+                        proxyData = resNode.asMap()
+                        node_name = nodeName
+                    }
+                }
+                if (isLoadEdge) {
                     def resEdges = d.getInEdgeByVertex(name, nodeName)
-                    while (resEdges.hasNext()){
+                    while (resEdges.hasNext()) {
                         def resEdge = resEdges.next().get(0).asString()
                         resEdge = resEdge.replace("[", "").replace("]", "")
                         n.edgeList.addAll getEdge(resEdge)
@@ -415,24 +431,26 @@ class Graph implements Serializable{
      * @param edgeName
      * @return
      */
-    List<? extends Edge> getEdge(String edgeName){
+    List<? extends Edge> getEdge(String edgeName) {
 
-        assert name != null && name.length() > 0 : "graph name not found"
-        assert edgeName != null && edgeName.length() > 0 : "edgeName not found"
+        assert name != null && name.length() > 0: "graph name not found"
+        assert edgeName != null && edgeName.length() > 0: "edgeName not found"
         return TuGraphDriver.doExecute2 { TuGraphDriver d ->
             def res = d.getEdgeAllData(name, edgeName)
             def schema = d.getEdgeSchema(name, edgeName)
             def json = schema.next().get(0).asString()
             def map = new JsonSlurper().parseText(json)
             List<Edge> list = []
-            while (res.hasNext()){
+            while (res.hasNext()) {
                 def resEdge = res.next().get(0).asRelationship() as InternalRelationship
-                Edge e = new Edge() {{
-                    proxyData = resEdge.asMap()
-                    edge_name = edgeName
-                    fromNode_name = map.constraints[0][0]
-                    toNode_name = map.constraints[0][1]
-                }}
+                Edge e = new Edge() {
+                    {
+                        proxyData = resEdge.asMap()
+                        edge_name = edgeName
+                        fromNode_name = map.constraints[0][0]
+                        toNode_name = map.constraints[0][1]
+                    }
+                }
                 list << e
             }
             return list
@@ -445,13 +463,13 @@ class Graph implements Serializable{
      * @param nodeName
      * @return
      */
-    List<? extends Node> getPositiveNodes(String nodeName){
-        assert name != null && name.length() > 0 : "graph name not found"
-        assert nodeName != null && nodeName.length() > 0 : "nodeName not found"
+    List<? extends Node> getPositiveNodes(String nodeName) {
+        assert name != null && name.length() > 0: "graph name not found"
+        assert nodeName != null && nodeName.length() > 0: "nodeName not found"
         return TuGraphDriver.doExecute2 { TuGraphDriver d ->
             List<Node> list = getNode(nodeName, true)
             def result = d.getPositiveNodes(name, nodeName)
-            while (result.hasNext()){
+            while (result.hasNext()) {
                 def tagetNodeName = result.next().get(0).asString()
                 tagetNodeName = tagetNodeName.replace("[", "").replace("]", "")
                 list.addAll getNode(tagetNodeName, true)
@@ -466,8 +484,8 @@ class Graph implements Serializable{
      * @return
      */
     List<? extends Node> getNegativeNodes(String nodeName) {
-        assert name != null && name.length() > 0 : "graph name not found"
-        assert nodeName != null && nodeName.length() > 0 : "nodeName not found"
+        assert name != null && name.length() > 0: "graph name not found"
+        assert nodeName != null && nodeName.length() > 0: "nodeName not found"
         return TuGraphDriver.doExecute2 { TuGraphDriver d ->
             List<Node> list = getNode(nodeName, true)
             def result = d.getNegativeNodes(name, nodeName)
@@ -485,27 +503,49 @@ class Graph implements Serializable{
      * @param node
      * @return
      */
-    <T extends Node> Boolean deleteNode(T node){
-        assert node != null : " node is not  null "
-        assert name != null && name.length() > 0 : "graph name not found"
-        def clazz = node.class
-        java.lang.reflect.Field[] fields = clazz.getFields() + clazz.getDeclaredFields()
-        fields = fields.findAll {
-            return !(it.getName().contains("\$") || it.getName().equals("metaClass") || it.getName().equals("node_name") || it.getName().equals("edgeList") || it.getName().equals("proxyData"))
-        }
-        fields = fields.findAll{
-            it.setAccessible(true)
-            def val = it.get(node)
-            if(val == null){
-                return false
+    <T extends Node> Boolean deleteNode(T node) {
+        assert node != null: "node is not null"
+        assert name != null && name.length() > 0: "graph name not found"
+
+        // 先删边
+        if (node.edgeList != null && node.edgeList.size() > 0) {
+            node.edgeList.each {
+                deleteEdge(it)
             }
-            return true
         }
-        assert fields.size() > 0 : "edge properties not found"
+
+        // 提取字段
+        def clazz = node.class
+        def fields = (clazz.getFields() + clazz.getDeclaredFields()).findAll {
+            !(it.getName().contains("\$") ||
+                    ["metaClass", "node_name", "edgeList", "proxyData"].contains(it.getName()))
+        }.findAll {
+            it.setAccessible(true)
+            it.get(node) != null
+        }
+
+        assert fields.size() > 0: "node properties not found"
+
         try {
-            String cypher = "match (n:$node.node_name { ${ fields.collect { it.getName() + + ": '" + node."${it.getName()}" + "'" }.join(",") } }) detach delete n"
-            driver.session(SessionConfig.forDatabase(name)).run(cypher)
-        }catch (Exception e) {
+            // 构建 WHERE 条件
+            def whereConditions = fields.collect { "n.${it.getName()} = \$${it.getName()}" }.join(" AND ")
+
+            // 构建 Cypher
+            def cypher = """
+            MATCH (n:${node.node_name})
+            WHERE ${whereConditions}
+            DETACH DELETE n
+        """
+
+            // 构建参数
+            def params = [:]
+            fields.each {
+                params[it.getName()] = it.get(node)
+            }
+
+            // 执行
+            driver.session(SessionConfig.forDatabase(name)).run(cypher, params)
+        } catch (Exception e) {
             e.printStackTrace()
             return false
         }
@@ -518,37 +558,48 @@ class Graph implements Serializable{
      * @param edge
      * @return
      */
-    <T extends Edge> Boolean deleteEdge(T edge){
-        assert edge != null : " edge is not  null "
-        assert name != null && name.length() > 0 : "graph name not found"
-        def clazz = edge.class
-        java.lang.reflect.Field[] fields = clazz.getFields() + clazz.getDeclaredFields()
-        fields = fields.findAll {
-            return !(it.getName().contains("\$") || it.getName().equals("metaClass") || it.getName().equals("node_name") || it.getName().equals("edgeList") || it.getName().equals("proxyData") || it.getName().equals("fromNode_name") || it.getName().equals("toNode_name") || it.getName().equals("self_expand") || it.getName().equals("toBindNode"))
-        }
-        fields = fields.findAll{
-            it.setAccessible(true)
-            def val = it.get(edge)
-            if(val == null){
-                return false
-            }
-            return true
-        }
-        assert fields.size() > 0 : "edge properties not found"
+    <T extends Edge> Boolean deleteEdge(T edge) {
+        assert edge != null: "edge is not null"
+        assert name != null && name.length() > 0: "graph name not found"
 
-        if(edge.getFromNode_name() == null){
+        def clazz = edge.class
+        def fields = (clazz.getFields() + clazz.getDeclaredFields()).findAll {
+            !(it.getName().contains("\$") ||
+                    ["metaClass", "node_name", "edgeList", "proxyData", "fromNode_name", "toNode_name", "self_expand", "toBindNode"].contains(it.getName()))
+        }.findAll {
+            it.setAccessible(true)
+            it.get(edge) != null
+        }
+        assert fields.size() > 0: "edge properties not found"
+
+        if (edge.getFromNode_name() == null) {
             def schema = TuGraphDriver.doExecute {}.getEdgeSchema(name, edge.getEdge_name())
             def json = schema.next().get(0).asString()
             def map = new JsonSlurper().parseText(json)
             edge.fromNode_name = map.constraints[0][0]
             edge.toNode_name = map.constraints[0][1]
         }
-        try {
 
-            String cypher = "match (n:$edge.fromNode_name)-[r:$edge.edge_name ]->(m:$edge.toNode_name)" +
-                    " where r." + fields.collect { it.getName()  + " = '" + edge."${it.getName()}" + "'" }.join(" and r.") + " delete r"
-            driver.session(SessionConfig.forDatabase(name)).run(cypher)
-        }catch (Exception e) {
+        try {
+            // 构建 WHERE 条件
+            def whereConditions = fields.collect { "r.${it.getName()} = \$${it.getName()}" }.join(" AND ")
+
+            // 构建 Cypher
+            def cypher = """
+            MATCH (n:${edge.fromNode_name})-[r:${edge.edge_name}]->(m:${edge.toNode_name})
+            WHERE ${whereConditions}
+            DELETE r
+        """
+
+            // 构建参数
+            def params = [:]
+            fields.each {
+                params[it.getName()] = it.get(edge)
+            }
+
+            // 执行
+            driver.session(SessionConfig.forDatabase(name)).run(cypher, params)
+        } catch (Exception e) {
             e.printStackTrace()
             return false
         }
@@ -556,21 +607,23 @@ class Graph implements Serializable{
     }
 
 
-    <T extends Serializable> Node getNodeById(String nodeName,  T id, String idName = "id"){
-        assert name != null && name.length() > 0 : "graph name not found"
-        assert nodeName != null && nodeName.length() > 0 : "nodeName not found"
+    <T extends Serializable> Node getNodeById(String nodeName, T id, String idName = "id") {
+        assert name != null && name.length() > 0: "graph name not found"
+        assert nodeName != null && nodeName.length() > 0: "nodeName not found"
         return TuGraphDriver.doExecute2 { TuGraphDriver d ->
-            String cypher = "match (n:$nodeName {$idName : '$id'})   return n"
+            String cypher = "match (n:$nodeName {$idName : \$id})   return n"
             try {
-                def result = d.session(SessionConfig.forDatabase(name)).run(cypher)
+                def result = d.session(SessionConfig.forDatabase(name)).run(cypher, Maps.of(idName, id))
                 def resNode = result.next().get(0).asNode()
-                Node n = new Node() {{
-                    proxyData = resNode.asMap()
-                    node_name = nodeName
-                }}
+                Node n = new Node() {
+                    {
+                        proxyData = resNode.asMap()
+                        node_name = nodeName
+                    }
+                }
                 return n
-            }catch (Exception e) {
-               return null
+            } catch (Exception e) {
+                return null
             }
 
         }

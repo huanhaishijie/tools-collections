@@ -146,7 +146,7 @@ class TuGraphDriver {
      */
     def getGraphSchema(String dbName = null) {
         return doExecute2 { TuGraphDriver d ->
-            if(dbName != null){
+            if (dbName != null) {
                 return d.session(SessionConfig.forDatabase(dbName)).run("CALL dbms.graph.getGraphSchema()")
             }
             return d.session(sessionConfig).run("CALL dbms.graph.getGraphSchema()")
@@ -189,7 +189,7 @@ class TuGraphDriver {
         assert json != null && json.trim().length() > 0: "json is null"
         return doExecute { TuGraphDriver d ->
             if (dbName) {
-                d.session(SessionConfig.forDatabase(dbName)).run("CALL db.createVertexLabelByJson(\$json)",[json: json])
+                d.session(SessionConfig.forDatabase(dbName)).run("CALL db.createVertexLabelByJson(\$json)", [json: json])
                 return
             }
             d.session(d.sessionConfig).run("CALL db.createVertexLabelByJson(\$json)", [json: json])
@@ -353,7 +353,7 @@ class TuGraphDriver {
                 return f
             }
             try {
-                def res =d.session(d.sessionConfig).run("MATCH ()-[r:$name]->() RETURN r LIMIT 1")
+                def res = d.session(d.sessionConfig).run("MATCH ()-[r:$name]->() RETURN r LIMIT 1")
                 res.single()
                 f = true
             } catch (Exception e) {
@@ -406,7 +406,7 @@ class TuGraphDriver {
      * @param nodeName
      * @return
      */
-    TuGraphDriver cleanNodeData(String dbName = null, String nodeName){
+    TuGraphDriver cleanNodeData(String dbName = null, String nodeName) {
         assert nodeName != null && nodeName.trim().length() > 0: "nodeName is null"
         return doExecute { TuGraphDriver d ->
             if (dbName) {
@@ -416,7 +416,6 @@ class TuGraphDriver {
             d.session(d.sessionConfig).run("MATCH (n:$nodeName) DETACH DELETE n")
         }
     }
-
 
 
     /**
@@ -431,18 +430,18 @@ class TuGraphDriver {
         assert datas != null && datas.size() > 0: "datas is null"
         assert nodes != null && nodes.size() == 2: "nodes is null or size != 2"
         return doExecute { TuGraphDriver d ->
-            if(dbName){
+            if (dbName) {
                 d.session(SessionConfig.forDatabase(dbName)).run("CALL db.upsertEdge('$edgeName', \$node0, \$node1, \$data)", [
                         node0: nodes[0],
                         node1: nodes[1],
-                        data: datas
+                        data : datas
                 ])
                 return
             }
             d.session(d.sessionConfig).run("CALL db.upsertEdge('$edgeName', \$node0, \$node1, \$data)", [
                     node0: nodes[0],
                     node1: nodes[1],
-                    data: datas
+                    data : datas
             ])
         }
     }
@@ -456,35 +455,35 @@ class TuGraphDriver {
      * @param props
      * @return
      */
-    <T extends Serializable> TuGraphDriver upsertEdgeData2(String dbName = null, String edgeName, List<T> nodes, List<String> props, List<T> datas){
+    <T extends Serializable> TuGraphDriver upsertEdgeData2(String dbName = null, String edgeName, List<T> nodes, List<String> props, List<T> datas) {
         assert edgeName != null && edgeName.trim().length() > 0: "edgeName is null"
         assert datas != null && datas.size() > 0: "datas is null"
         assert nodes != null && nodes.size() == 2: "nodes is null or size != 2"
 
         return doExecute { TuGraphDriver d ->
-            if(dbName){
-                    datas.each {
-                        def propAssignments = props.collect { p -> " ${p}: '${it[p]}'" }.join(", ")
-                        d.session(SessionConfig.forDatabase(dbName)).run(
-                                " MATCH (s:${nodes[0]?.type} {${nodes[0]?.key}: '$it.from_val' }), (t:${nodes[1]?.type} {${nodes[1]?.key}: '$it.to_val'}) "+
-                                        " CREATE (s)-[:${edgeName} {${propAssignments}}]->(t)"
-                        )
-                    }
-                return
-            }
-//            d.session(d.sessionConfig).run("UNWIND \$edges AS edge " +
-//                    "MATCH (s:${nodes[0]?.type} {${nodes[0]?.key}: edge.from_val }), (t:${nodes[1]?.type} {${nodes[1]?.key}: edge.to_val}) "+
-//                    "CREATE (s)-[:${edgeName} {${propAssignments}}]->(t)", [edges: datas])
-            datas.each {
-                def propAssignments = props.collect { p -> " ${p}: '${it[p]}'" }.join(", ")
-                d.session(SessionConfig.forDatabase(dbName)).run(
-                        " MATCH (s:${nodes[0]?.type} {${nodes[0]?.key}: '$it.from_val' }), (t:${nodes[1]?.type} {${nodes[1]?.key}: '$it.to_val'}) "+
-                                " CREATE (s)-[:${edgeName} {${propAssignments}}]->(t)"
-                )
+            datas.each { data ->
+                // 构建属性赋值部分
+                def propAssignments = props.collect { p -> "${p}: \$${p}" }.join(", ")
+                // Cypher 语句
+                def cypher = """
+                MATCH (s:${nodes[0]?.type} {${nodes[0]?.key}: \$from_val }), 
+                      (t:${nodes[1]?.type} {${nodes[1]?.key}: \$to_val })
+                CREATE (s)-[:${edgeName} { ${propAssignments} }]->(t)
+            """
+                // 构建参数 Map
+                def params = [
+                        from_val: data.from_val,
+                        to_val  : data.to_val
+                ]
+                props.each { p ->
+                    params[p] = data[p]
+                }
+
+                def session = dbName ? d.session(SessionConfig.forDatabase(dbName)) : d.session(d.sessionConfig)
+                session.run(cypher, params)
             }
         }
     }
-
 
 
     /**
@@ -493,7 +492,7 @@ class TuGraphDriver {
      * @param edgeName
      * @return
      */
-    TuGraphDriver cleanEdgeData(String dbName = null, String edgeName){
+    TuGraphDriver cleanEdgeData(String dbName = null, String edgeName) {
         assert edgeName != null && edgeName.trim().length() > 0: "edgeName is null"
         return doExecute { TuGraphDriver d ->
             if (dbName) {
@@ -565,7 +564,6 @@ class TuGraphDriver {
                     "RETURN DISTINCT labels(r) AS label")
         }
     }
-
 
 
 }
