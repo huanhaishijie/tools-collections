@@ -64,5 +64,73 @@ class PGSql extends SqlHandler {
         return count > 0
     }
 
-
+    @Override
+    String mapJavaToSQL(String javaType) {
+        String sqlType
+        switch (javaType) {
+            case "java.lang.Integer":
+            case "Integer":
+                sqlType = "int4"
+                break
+            case "java.lang.Long":
+            case "Long":
+                sqlType = "int8"
+                break
+            case "java.lang.Short":
+            case "Short":
+                sqlType = "int2"
+                break
+            case "java.lang.Float":
+            case "Float":
+                sqlType = "real"
+                break
+            case "java.lang.Double":
+            case "Double":
+                sqlType = "float8"
+                break
+            case "BigDecimal":
+                sqlType = "numeric"
+                break
+            case "java.lang.Boolean":
+            case "Boolean":
+                sqlType = "boolean"
+                break
+            case "java.lang.String":
+            case "String":
+                sqlType = "varchar(1024)"
+                break
+            case "java.lang.Character":
+            case "Character":
+                sqlType = "char"
+                break
+            case "java.time.LocalDate":
+                sqlType = "date"
+                break
+            case "java.time.LocalTime":
+                sqlType = "time"
+                break
+            case "java.time.LocalDateTime":
+            case "java.util.Date":
+                sqlType = "timestamp"
+                break
+            case "byte[]":
+            case "java.sql.Blob":
+                sqlType = "bytea"
+                break
+            case "java.util.UUID":
+                sqlType = "uuid"
+                break
+            case "java.util.List":
+            case "java.util.ArrayList":
+            case "java.util.Set":
+                sqlType = "jsonb"
+                break
+            case "java.util.Map":
+                sqlType = "jsonb"
+                break
+            default:
+                throw new IllegalArgumentException("Unsupported Java type: ${javaType}")
+        }
+        return sqlType
+    }
 }

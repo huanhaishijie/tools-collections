@@ -53,6 +53,7 @@ abstract class SqlHandler {
     abstract boolean isSupportGis()
 
 
+    abstract String mapJavaToSQL(String javaType)
 
 
 
