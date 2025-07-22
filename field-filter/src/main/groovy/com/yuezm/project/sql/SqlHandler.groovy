@@ -25,7 +25,7 @@ abstract class SqlHandler {
 
 
     @Delegate
-    private Sql sql = null;
+    protected Sql sql = null;
 
 
     public SqlHandler(Connection connection) {
@@ -48,6 +48,9 @@ abstract class SqlHandler {
         }
         return null
     }
+
+
+    abstract boolean isSupportGis()
 
 
 
