@@ -82,7 +82,7 @@ class PGSql extends SqlHandler {
                 break
             case "java.lang.Float":
             case "Float":
-                sqlType = "real"
+                sqlType = "float4"
                 break
             case "java.lang.Double":
             case "Double":
