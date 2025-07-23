@@ -19,7 +19,7 @@ class SQLiteConnectionFactory {
     public static String ITEM_NAME = ""
     private final String SQLite_PATH = "/orm/basic/yzm/task_queue.db"
 
-    private final String SQLite_JDBC_URL = "jdbc:SQLite:".concat(SQLite_PATH)
+    private final String SQLite_JDBC_URL = "jdbc:SQLite:"
     private static volatile HikariDataSource dataSource
 
 
@@ -41,9 +41,9 @@ class SQLiteConnectionFactory {
         return dataSource
     }
     protected synchronized void createDataSource() {
-        FileUtil.createFileWithDirectories(System.getProperty("user.home") +"/"+ ITEM_NAME + "/orm/basic/yzm/task_queue.db")
+        def file = FileUtil.createFileWithDirectories(System.getProperty("user.home") + "/" + ITEM_NAME + SQLite_PATH)
         HikariConfig config = new HikariConfig()
-        config.setJdbcUrl(SQLite_JDBC_URL)
+        config.setJdbcUrl(SQLite_JDBC_URL + file.absolutePath)
         config.setPoolName("SQLitePool")
         config.setAutoCommit(true)
         // 池中最小空闲连接数量

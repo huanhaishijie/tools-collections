@@ -48,7 +48,7 @@ class FileUtil {
                         }
                     })
         }
-        Files.delete(pathToDelete)
+//        Files.delete(pathToDelete)
     }
 
 }

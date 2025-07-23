@@ -25,7 +25,7 @@ abstract class SqlHandler {
 
 
     @Delegate
-    protected Sql sql = null;
+    Sql sql = null;
 
 
     public SqlHandler(Connection connection) {
@@ -53,8 +53,20 @@ abstract class SqlHandler {
     abstract boolean isSupportGis()
 
 
+    /**
+     * 字段类型映射
+     * @param javaType
+     * @return
+     */
     abstract String mapJavaToSQL(String javaType)
 
 
+    /**
+     * 添加表备注
+     * @param tableName
+     * @param memo
+     * @return
+     */
+    abstract boolean addTableMemo(String tableName, String memo)
 
 }

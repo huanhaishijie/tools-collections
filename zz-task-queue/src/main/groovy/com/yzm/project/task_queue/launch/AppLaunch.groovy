@@ -34,6 +34,12 @@ class AppLaunch {
         try {
             def path = AppLaunch.class.protectionDomain.codeSource.location.path
             def itemName = new File(path).getName()
+            if (itemName.endsWith(".jar")) {
+                itemName = itemName.substring(0, itemName.length() - 4)
+            }
+            if(itemName.contains(".")){
+                itemName = itemName.substring(0, itemName.indexOf("."))
+            }
             SQLiteConnectionFactory.ITEM_NAME = itemName
         }catch (Exception e){
             println "获取项目名称失败"

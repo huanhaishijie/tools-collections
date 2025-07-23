@@ -104,33 +104,74 @@ class PGSql extends SqlHandler {
                 sqlType = "char"
                 break
             case "java.time.LocalDate":
+            case "LocalDate":
                 sqlType = "date"
                 break
             case "java.time.LocalTime":
+            case "LocalTime":
                 sqlType = "time"
                 break
             case "java.time.LocalDateTime":
             case "java.util.Date":
+            case "Date":
+            case "LocalDateTime":
                 sqlType = "timestamp"
                 break
             case "byte[]":
             case "java.sql.Blob":
+
                 sqlType = "bytea"
                 break
             case "java.util.UUID":
+            case "UUID":
                 sqlType = "uuid"
                 break
             case "java.util.List":
             case "java.util.ArrayList":
             case "java.util.Set":
+            case "java.util.HashSet":
+            case "java.util.TreeSet":
+            case "java.util.LinkedHashSet":
+            case "List":
+            case "ArrayList":
+            case "Set":
+            case "HashSet":
+            case "TreeSet":
+            case "LinkedHashSet":
                 sqlType = "jsonb"
                 break
             case "java.util.Map":
+            case "java.util.HashMap":
+            case "java.util.TreeMap":
+            case "java.util.LinkedHashMap":
+            case "Map":
+            case "HashMap":
+            case "TreeMap":
+            case "LinkedHashMap":
                 sqlType = "jsonb"
+                break
+            case "Geometry":
+            case "geometry":
+                sqlType = "text"
                 break
             default:
                 throw new IllegalArgumentException("Unsupported Java type: ${javaType}")
         }
         return sqlType
     }
+
+
+
+    @Override
+    boolean addTableMemo(String tableName, String memo) {
+        String sql = "COMMENT ON TABLE $tableName IS '$memo';"
+        try {
+            execute(sql)
+        }catch (Exception e) {
+            e.printStackTrace()
+        }
+        return true
+    }
+
+
 }
