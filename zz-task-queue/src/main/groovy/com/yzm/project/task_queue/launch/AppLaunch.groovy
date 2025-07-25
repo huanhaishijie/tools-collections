@@ -9,10 +9,13 @@ import groovy.sql.Sql
 import groovy.util.logging.Slf4j
 import org.reflections.Reflections
 import org.springframework.boot.context.event.ApplicationReadyEvent
+import org.springframework.boot.web.servlet.context.ServletWebServerApplicationContext
 import org.springframework.context.event.ContextClosedEvent
 import org.springframework.context.event.EventListener
+import org.springframework.core.env.Environment
 import org.springframework.stereotype.Component
 
+import javax.annotation.Resource
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 
@@ -28,54 +31,61 @@ import java.util.concurrent.TimeUnit
 class AppLaunch {
     def executor = Executors.newScheduledThreadPool(2)
     synchronized final Set<Consumer> consumerSet = new HashSet<>(15)
+    private final Map<String, Integer> countMap = new HashMap<>()
+    private final Integer limit = 10
+
+    @Resource
+    Environment environment
+
     @EventListener
     void onApplicationEvent(ApplicationReadyEvent event) {
         log.info("sqlite task_queue has been launched.")
         try {
-            def path = AppLaunch.class.protectionDomain.codeSource.location.path
-            def itemName = new File(path).getName()
-            if (itemName.endsWith(".jar")) {
-                itemName = itemName.substring(0, itemName.length() - 4)
+            String itemName = environment.getProperty("spring.application.name");
+            try {
+                def port = environment.getProperty("server.port")
+                itemName = "$itemName$port"
+            } catch (Exception e) {
+
             }
-            if(itemName.contains(".")){
-                itemName = itemName.substring(0, itemName.indexOf("."))
-            }
+
             SQLiteConnectionFactory.ITEM_NAME = itemName
-        }catch (Exception e){
+
+
+        } catch (Exception e) {
             println "获取项目名称失败"
         }
 
 
-
         // 提交任务到线程池，每隔2秒执行一次
         executor.scheduleAtFixedRate({
-            if(consumerSet.isEmpty()){
+            if (consumerSet.isEmpty()) {
                 Reflections reflections = new Reflections("com")
                 def consumerClazzSet = reflections.getSubTypesOf(Consumer.class)
-                if(consumerClazzSet.size() == 0){
+                if (consumerClazzSet.size() == 0) {
                     log.info("No customers were found！！！！！！！！！！！！！！！！")
                     return
                 }
-                def list = consumerClazzSet.collect{
+                def list = consumerClazzSet.collect {
                     try {
-                      return it.newInstance()
-                    }catch (Exception e){
+                        return it.newInstance()
+                    } catch (Exception e) {
                         return null
                     }
-                }.findAll{
+                }.findAll {
                     it != null
                 }
-                if(list.size() == 0){
+                if (list.size() == 0) {
                     log.info("No available customers were found！！！！！！！！！！！！！！！！")
                     return
                 }
                 consumerSet.addAll(list)
             }
-            GroovySqlConfig.getInstance().doQuery{
+            GroovySqlConfig.getInstance().doQuery {
                 Sql sql ->
                     String querySql = "select * from sys_task where state = 'ready' or state = 'fail' order by create_time asc limit 100"
                     def rows = sql.rows(querySql)
-                    if(rows.size() == 0){
+                    if (rows.size() == 0) {
                         return
                     }
                     //优先级排序
@@ -94,29 +104,31 @@ class AppLaunch {
                                 try {
                                     //jdk反序列化的对象能直接使用，但不能支持泛型引用
                                     def clazz = task.class
-                                    def method = it.getClass().getMethods().find({m -> m.name == "consumer" && m.parameterCount == 1 && m.parameterTypes[0].name == clazz.name })
-                                    if(method == null){
+                                    def method = it.getClass().getMethods().find({ m -> m.name == "consumer" && m.parameterCount == 1 && m.parameterTypes[0].name == clazz.name })
+                                    if (method == null) {
                                         return
                                     }
                                     def newTask = method.getParameterTypes()[0].newInstance()
                                     def clazz1 = newTask.class
-                                    clazz.getMethods().findAll{ cla ->
+                                    clazz.getMethods().findAll { cla ->
                                         cla.name.startsWith("get")
                                     }.each { c1m ->
-                                        def newMethods = clazz1.getMethods().findAll{ c2m ->
+                                        def newMethods = clazz1.getMethods().findAll { c2m ->
                                             c2m.name.startsWith("set")
                                         }
-                                        def resultMethod = newMethods.find{ m -> m.name == c1m.name.replace('get','set') }
-                                        if(resultMethod && resultMethod.name != 'setMetaClass' && resultMethod.name != 'setProperty'){
+                                        def resultMethod = newMethods.find { m -> m.name == c1m.name.replace('get', 'set') }
+                                        if (resultMethod && resultMethod.name != 'setMetaClass' && resultMethod.name != 'setProperty') {
                                             resultMethod.invoke(newTask, c1m.invoke(task))
                                         }
                                     }
-                                    if(method != null){
+                                    if (method != null) {
                                         state = method.invoke(it, newTask)
-                                    }else {
+                                    } else {
                                         return
                                     }
-                                }catch (Exception e){
+                                } catch (Exception e) {
+                                    log.info("消费任务失败：${taskName}，${taskInfo}")
+                                    e.printStackTrace()
                                     state = TaskState.fail
                                 }
                                 return state
@@ -126,12 +138,30 @@ class AppLaunch {
                             if (result == null) {
                                 result = TaskState.fail
                             }
-                            GroovySqlConfig.getInstance().doExecute{
+                            GroovySqlConfig.getInstance().doExecute {
                                 Sql sql2 ->
                                     String updateSql = "update sys_task set state = ? where id = ?"
                                     sql2.execute(updateSql, result.toString(), id)
+                                    if (result == TaskState.success) {
+                                        String insertSql = "insert into sys_task_success(id, task_name, state, task_info, priority, create_time) values(?,?,?,?,?,?)"
+                                        sql2.execute(insertSql, id, taskName, result.toString(), taskInfo, row.get("priority"), row.get("create_time"))
+                                        sql2.execute("delete from sys_task where id = ?", id)
+                                    } else if (result == TaskState.fail) {
+                                        if (!countMap.containsKey(id)) {
+                                            countMap[id] = 0
+                                        } else {
+                                            countMap[id]++
+                                        }
+                                        if (countMap[id] > limit) {
+                                            String insertSql = "insert into sys_task_fail(id, task_name, state, task_info, priority, create_time) values(?,?,?,?,?,?)"
+                                            sql2.execute(insertSql, id, taskName, result.toString(), taskInfo, row.get("priority"), row.get("create_time"))
+                                            sql2.execute("delete from sys_task where id = ?", id)
+                                            countMap.remove(id)
+                                        }
+                                    }
                             }
-                        }catch (Exception e){
+                        } catch (Exception e) {
+                            e.printStackTrace()
                             log.info("反序列化失败")
                         }
                     }
@@ -140,10 +170,10 @@ class AppLaunch {
     }
 
     @EventListener
-    void handleContextClosed(ContextClosedEvent  event) {
+    void handleContextClosed(ContextClosedEvent event) {
         try {
             executor.shutdown()
-        }catch (Exception e){
+        } catch (Exception e) {
             executor.shutdown()
         }
 
