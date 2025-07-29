@@ -79,7 +79,7 @@ Producer.getInstance().send("任务唯一ID", new FileTaskDto());
 ## 版本历史
 
 - 1.0.0 - 初始版本
-- 1.0.1 - 修复任务null赋值失败导致无法消费
+- 1.0.1 - 1.修复任务null赋值失败导致无法消费 2.优化sql展示
 
 ## 致谢
 

@@ -10,6 +10,7 @@ import groovy.util.logging.Slf4j
 import org.reflections.Reflections
 import org.springframework.boot.context.event.ApplicationReadyEvent
 import org.springframework.boot.web.servlet.context.ServletWebServerApplicationContext
+import org.springframework.context.annotation.Import
 import org.springframework.context.event.ContextClosedEvent
 import org.springframework.context.event.EventListener
 import org.springframework.core.env.Environment
@@ -28,6 +29,7 @@ import java.util.concurrent.TimeUnit
  */
 @Component
 @Slf4j
+@Import([LogLevelConfig.class])
 class AppLaunch {
     def executor = Executors.newScheduledThreadPool(2)
     synchronized final Set<Consumer> consumerSet = new HashSet<>(15)
