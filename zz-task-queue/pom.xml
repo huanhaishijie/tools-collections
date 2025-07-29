@@ -5,9 +5,19 @@
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>com.yzm.project</groupId>
-    <artifactId>zz-task-queue</artifactId>
-    <version>1.0-SNAPSHOT</version>
+    <artifactId>task-queue</artifactId>
+    <version>1.0.1</version>
 
+    <distributionManagement>
+        <repository>
+            <id>yzm-central</id> <!-- 该 ID 应与您在 settings.xml 中配置的服务器 ID 匹配 -->
+            <url>http://47.109.156.230:13888/repository/internal/</url> <!-- 替换为您的仓库 URL -->
+        </repository>
+        <snapshotRepository>
+            <id>yzm-snapshots</id> <!-- 可选，针对快照的仓库 -->
+            <url>http://47.109.156.230:13888/repository/snapshots</url> <!-- 替换为您的快照仓库 URL -->
+        </snapshotRepository>
+    </distributionManagement>
 
     <dependencyManagement>
         <dependencies>
@@ -49,7 +59,7 @@
         <dependency>
             <groupId>org.reflections</groupId>
             <artifactId>reflections</artifactId>
-            <version>0.10.2</version>
+            <version>0.9.11</version>
             <scope>compile</scope>
         </dependency>
     </dependencies>
@@ -109,19 +119,19 @@
                     </execution>
                 </executions>
             </plugin>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-source-plugin</artifactId>
-                <version>2.4</version>
-                <executions>
-                    <execution>
-                        <id>attach-sources</id>
-                        <goals>
-                            <goal>jar</goal>
-                        </goals>
-                    </execution>
-                </executions>
-            </plugin>
+<!--            <plugin>-->
+<!--                <groupId>org.apache.maven.plugins</groupId>-->
+<!--                <artifactId>maven-source-plugin</artifactId>-->
+<!--                <version>2.4</version>-->
+<!--                <executions>-->
+<!--                    <execution>-->
+<!--                        <id>attach-sources</id>-->
+<!--                        <goals>-->
+<!--                            <goal>jar</goal>-->
+<!--                        </goals>-->
+<!--                    </execution>-->
+<!--                </executions>-->
+<!--            </plugin>-->
         </plugins>
     </build>
 

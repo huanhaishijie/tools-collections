@@ -118,7 +118,12 @@ class AppLaunch {
                                         }
                                         def resultMethod = newMethods.find { m -> m.name == c1m.name.replace('get', 'set') }
                                         if (resultMethod && resultMethod.name != 'setMetaClass' && resultMethod.name != 'setProperty') {
-                                            resultMethod.invoke(newTask, c1m.invoke(task))
+                                            try {
+                                                resultMethod.invoke(newTask, c1m.invoke(task))
+                                            }catch (Exception e) {
+                                                log.error("set ${c1m.name} error ${newTask}")
+                                            }
+
                                         }
                                     }
                                     if (method != null) {
