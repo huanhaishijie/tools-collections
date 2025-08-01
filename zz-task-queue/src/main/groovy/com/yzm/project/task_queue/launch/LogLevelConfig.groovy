@@ -25,6 +25,6 @@ class LogLevelConfig implements ApplicationRunner {
 
     @Override
     void run(ApplicationArguments args) {
-        loggingSystem.setLogLevel("groovy.sql", LogLevel.OFF)
+        loggingSystem.setLogLevel("groovy.sql", LogLevel.INFO)
     }
 }

@@ -17,7 +17,7 @@ import java.util.function.Function
  */
 abstract class SqlHandler {
 
-    protected  Connection connection;
+    protected  Connection connection
 
 
     static Closure sqlHandlerFactory = null
@@ -25,10 +25,10 @@ abstract class SqlHandler {
 
 
     @Delegate
-    Sql sql = null;
+    Sql sql = null
 
 
-    public SqlHandler(Connection connection) {
+    SqlHandler(Connection connection) {
         this.connection = connection
         sql = new Sql(connection)
     }
@@ -69,4 +69,17 @@ abstract class SqlHandler {
      */
     abstract boolean addTableMemo(String tableName, String memo)
 
+
+    /**
+     * 删除表
+     * @param tableName
+     * @return
+     */
+    abstract boolean dropTable(String tableName)
+
+    /**
+     * 获取包装类
+     * @return
+     */
+    abstract Wrapper getWrapper()
 }

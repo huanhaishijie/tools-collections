@@ -1,4 +1,4 @@
-package com.yuezm.project.sql.pg
+package com.yuezm.project.sql.dm
 
 import com.yuezm.project.sql.SqlHandler
 import com.yuezm.project.sql.Wrapper
@@ -7,63 +7,26 @@ import java.sql.Connection
 
 
 /**
- * PGSql
+ * DmSql
  *
  * @author yzm
  * @version 1.0
- * @description ${TODO}
- * @date 2025/6/20 9:46
+ * @description 达梦
+ * @date 2025/7/31 10:37
  */
-class PGSql extends SqlHandler {
+class DmSql extends SqlHandler{
 
-    PGSql(Connection connection) {
+    DmSql(Connection connection) {
         super(connection)
     }
-//try {
-    //    // 获取数据库类型
-    //    String databaseType = datasource.getCode(); // 假设code字段存储了数据库类型
-    //
-    //    // 根据数据库类型构建对应的SQL
-    //    String sql = "";
-    //    switch (databaseType.toLowerCase()) {
-    //        case "postgresql":
-    //            sql = "SELECT COUNT(*) FROM pg_extension WHERE extname = 'postgis'";
-    //            break;
-    //        case "oracle":
-    //            sql = "SELECT COUNT(*) FROM all_objects WHERE object_name = 'SDO_GEOMETRY'";
-    //            break;
-    //        case "mysql":
-    //            sql = "SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'geometry_columns'";
-    //            break;
-    //        case "dm": // 达梦
-    //            sql = "SELECT COUNT(*) FROM sys_synonym WHERE synonym_name = 'GEOMETRY'";
-    //            break;
-    //        case "kingbase": // 人大金仓
-    //            sql = "SELECT COUNT(*) FROM pg_extension WHERE extname = 'postgis'";
-    //            break;
-    //        default:
-    //            logger.info("不支持的数据库类型---{}, type: {}", shpFileTaskDto.getId(), databaseType);
-    //            datasourceShpfileService.updateState(shpFileTaskDto.getId(), "3");
-    //            return TaskState.success;
-    //    }
-    //
-    //    // 执行SQL查询
-    //    int count = sqlHandler.queryForInt(sql);
-    //    if (count == 0) {
-    //        logger.info("数据库未启用GIS扩展---{}, type: {}", shpFileTaskDto.getId(), databaseType);
-    //        datasourceShpfileService.updateState(shpFileTaskDto.getId(), "3");
-    //        return TaskState.success;
-    //    }
-    //} catch (Exception e) {
-    //    logger.info("检查GIS扩展失败---{}, error: {}", shpFileTaskDto.getId(), e.getMessage());
-    //    datasourceShpfileService.updateState(shpFileTaskDto.getId(), "3");
-    //    return TaskState.success;
-    //}
+
+
+    @Override
     boolean isSupportGis() {
-        String query = "SELECT COUNT(*) count FROM pg_extension WHERE extname = 'postgis'"
-        long count = sql.firstRow(query).count as long
-        return count > 0
+        return false
     }
+
+
 
     @Override
     String mapJavaToSQL(String javaType) {
@@ -71,26 +34,26 @@ class PGSql extends SqlHandler {
         switch (javaType) {
             case "java.lang.Integer":
             case "Integer":
-                sqlType = "int4"
+                sqlType = "NUMBER"
                 break
             case "java.lang.Long":
             case "Long":
-                sqlType = "int8"
+                sqlType = "NUMBER"
                 break
             case "java.lang.Short":
             case "Short":
-                sqlType = "int2"
+                sqlType = "NUMBER"
                 break
             case "java.lang.Float":
             case "Float":
-                sqlType = "float4"
+                sqlType = "FLOAT"
                 break
             case "java.lang.Double":
             case "Double":
-                sqlType = "float8"
+                sqlType = "FLOAT"
                 break
             case "BigDecimal":
-                sqlType = "numeric"
+                sqlType = "NUMBER"
                 break
             case "java.lang.Boolean":
             case "Boolean":
@@ -98,30 +61,30 @@ class PGSql extends SqlHandler {
                 break
             case "java.lang.String":
             case "String":
-                sqlType = "varchar(1024)"
+                sqlType = "VARCHAR2(1024)"
                 break
             case "java.lang.Character":
             case "Character":
-                sqlType = "char"
+                sqlType = "CHAR(10)"
                 break
             case "java.time.LocalDate":
             case "LocalDate":
-                sqlType = "date"
+                sqlType = "DATE"
                 break
             case "java.time.LocalTime":
             case "LocalTime":
-                sqlType = "time"
+                sqlType = "TIME"
                 break
             case "java.time.LocalDateTime":
             case "java.util.Date":
             case "Date":
             case "LocalDateTime":
-                sqlType = "timestamp"
+                sqlType = "TIMESTAMP"
                 break
             case "byte[]":
             case "java.sql.Blob":
 
-                sqlType = "bytea"
+                sqlType = "BLOB"
                 break
             case "java.util.UUID":
             case "UUID":
@@ -139,7 +102,7 @@ class PGSql extends SqlHandler {
             case "HashSet":
             case "TreeSet":
             case "LinkedHashSet":
-                sqlType = "jsonb"
+                sqlType = "JSON"
                 break
             case "java.util.Map":
             case "java.util.HashMap":
@@ -149,11 +112,11 @@ class PGSql extends SqlHandler {
             case "HashMap":
             case "TreeMap":
             case "LinkedHashMap":
-                sqlType = "jsonb"
+                sqlType = "JSON"
                 break
             case "Geometry":
             case "geometry":
-                sqlType = "text"
+                sqlType = "TEXT"
                 break
             default:
                 throw new IllegalArgumentException("Unsupported Java type: ${javaType}")
@@ -161,11 +124,9 @@ class PGSql extends SqlHandler {
         return sqlType
     }
 
-
-
     @Override
     boolean addTableMemo(String tableName, String memo) {
-        String sql = "COMMENT ON TABLE $tableName IS '$memo';"
+        String sql = "COMMENT ON TABLE $tableName IS '$memo'"
         try {
             execute(sql)
         }catch (Exception e) {
@@ -177,17 +138,18 @@ class PGSql extends SqlHandler {
 
     @Override
     boolean dropTable(String tableName) {
-        String sql = "DROP TABLE IF EXISTS $tableName;"
+        String sql = "DROP TABLE $tableName"
         try {
             execute(sql)
         }catch (Exception e) {
             e.printStackTrace()
+            return false
         }
         return true
     }
 
     @Override
     Wrapper getWrapper() {
-        return new PGSqlWrapper()
+        new DmWrapper()
     }
 }
