@@ -16,4 +16,18 @@ class DmWrapper extends Wrapper {
     String getColumn(String column) {
         return "\"${column}\""
     }
+
+    @Override
+    String getColumns(String... columns) {
+        return columns.collect { getColumn(it) }.join(",")
+    }
+
+    @Override
+    String getColumns(List<String> columns) {
+        return columns.collect { getColumn(it) }.join(",")
+    }
+
+
 }
+
+

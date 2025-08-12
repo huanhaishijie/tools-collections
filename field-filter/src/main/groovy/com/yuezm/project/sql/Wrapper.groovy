@@ -11,7 +11,22 @@ package com.yuezm.project.sql
  */
 abstract class Wrapper {
 
+
+
+
+
+    String tableName
+
     abstract String getColumn(String column)
+
+    abstract String getColumns(String... columns)
+
+    abstract String getColumns(List<String> columns)
+
+    SqlBuilder sqlBuilder(){
+        new SqlBuilder(this)
+    }
+
 
 
 
