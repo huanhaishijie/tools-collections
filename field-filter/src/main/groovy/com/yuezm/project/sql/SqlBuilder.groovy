@@ -1,5 +1,7 @@
 package com.yuezm.project.sql
 
+import java.util.function.Function
+
 
 /**
  * SqlBuilder
@@ -9,7 +11,7 @@ package com.yuezm.project.sql
  * @description ${TODO}
  * @date 2025/8/12 10:07
  */
-class SqlBuilder extends Wrapper{
+class SqlBuilder{
 
     private StringBuilder conditionBuilder = new StringBuilder(" where 1 = 1 ")
     private Map<String, Object> conditionVal = new LinkedHashMap<>()
@@ -44,6 +46,12 @@ class SqlBuilder extends Wrapper{
         return this
     }
 
+    <T> SqlBuilder addSearchColumn(T t, Function<T, String> func){
+        this.searchColumns << func.apply(t)
+        return this
+    }
+
+
 
     SqlBuilder addTableNames(List<String> tableNames){
         this.tableNames.addAll tableNames
@@ -62,7 +70,7 @@ class SqlBuilder extends Wrapper{
     }
 
 
-    SqlBuilder conditionJoin(String key, Object value, ConditionBuilder conditionBuilder){
+    <T> SqlBuilder conditionJoin(String key, T value, ConditionBuilder<T> conditionBuilder){
         String condition = conditionBuilder.buildCondition(conditionVal, key, value)
         conditionBuilder.buildCondition(conditionVal, key, value)
         this.conditionBuilder.append(condition)
@@ -73,6 +81,11 @@ class SqlBuilder extends Wrapper{
     SqlBuilder addConditionVal(String key, Object value){
         conditionVal.put(key, value)
         return this
+    }
+
+
+    Map<String, Object> getConditionVal(){
+        return conditionVal
     }
 
 
@@ -98,23 +111,6 @@ class SqlBuilder extends Wrapper{
 
         return sql
     }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 }

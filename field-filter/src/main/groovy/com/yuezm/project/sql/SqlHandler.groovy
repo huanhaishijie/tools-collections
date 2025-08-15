@@ -23,6 +23,7 @@ abstract class SqlHandler {
     static Closure sqlHandlerFactory = null
     static BiFunction<String,Connection, SqlHandler> sqlHandlerFactory2 = null
 
+    protected Wrapper selfWrapper
 
     @Delegate
     Sql sql = null

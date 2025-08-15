@@ -5,7 +5,6 @@ import com.yuezm.project.sql.Wrapper
 
 import java.sql.Connection
 
-
 /**
  * OracleSql
  *
@@ -147,6 +146,9 @@ class OracleSql extends SqlHandler {
 
     @Override
     Wrapper getWrapper() {
-        return new OracleSqlWrapper()
+        if(selfWrapper == null){
+            selfWrapper = new OracleSqlWrapper()
+        }
+        return selfWrapper
     }
 }

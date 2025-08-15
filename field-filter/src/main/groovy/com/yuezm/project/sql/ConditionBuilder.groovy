@@ -9,8 +9,8 @@ package com.yuezm.project.sql
  * @date 2025/8/12 10:35
  */
 @FunctionalInterface
-interface ConditionBuilder {
+interface ConditionBuilder<T> {
 
-    <T> SqlBuilder buildCondition(Map<String, Object> conditions, String key, T t)
+    String buildCondition(Map<String, Object> conditions, String key, T t)
 
 }

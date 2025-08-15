@@ -2,6 +2,7 @@ package com.yuezm.project.sql.pg
 
 import com.yuezm.project.sql.SqlHandler
 import com.yuezm.project.sql.Wrapper
+import com.yuezm.project.sql.dm.DmWrapper
 
 import java.sql.Connection
 
@@ -188,6 +189,9 @@ class PGSql extends SqlHandler {
 
     @Override
     Wrapper getWrapper() {
-        return new PGSqlWrapper()
+        if(selfWrapper == null){
+            selfWrapper = new PGSqlWrapper()
+        }
+        return selfWrapper
     }
 }

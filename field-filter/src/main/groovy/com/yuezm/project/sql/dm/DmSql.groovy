@@ -150,6 +150,9 @@ class DmSql extends SqlHandler{
 
     @Override
     Wrapper getWrapper() {
-        new DmWrapper()
+        if(selfWrapper == null){
+            selfWrapper = new DmWrapper()
+        }
+        return selfWrapper
     }
 }

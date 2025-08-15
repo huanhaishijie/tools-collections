@@ -2,6 +2,7 @@ package com.yuezm.project.sql.mysql
 
 import com.yuezm.project.sql.SqlHandler
 import com.yuezm.project.sql.Wrapper
+import com.yuezm.project.sql.dm.DmWrapper
 
 import java.sql.Connection
 
@@ -146,6 +147,9 @@ class MySql extends SqlHandler {
 
     @Override
     Wrapper getWrapper() {
-        return new MySqlWrapper()
+        if(selfWrapper == null){
+            selfWrapper = new MySqlWrapper()
+        }
+        return wrapper
     }
 }

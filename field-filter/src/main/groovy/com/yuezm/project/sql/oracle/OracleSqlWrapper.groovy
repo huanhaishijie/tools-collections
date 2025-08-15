@@ -1,5 +1,6 @@
 package com.yuezm.project.sql.oracle
 
+import com.yuezm.project.sql.TableInfo
 import com.yuezm.project.sql.Wrapper
 
 
@@ -15,5 +16,117 @@ class OracleSqlWrapper extends Wrapper{
     @Override
     String getColumn(String column) {
         return "\"${column}\""
+    }
+
+
+    @Override
+    String getColumns(String... columns) {
+        return columns.collect { getColumn(it) }.join(",")
+    }
+
+    @Override
+    String getColumns(List<String> columns) {
+        return columns.collect { getColumn(it) }.join(",")
+    }
+
+    @Override
+    String getTotalCountSql(String sql) {
+        return "select count(t.*) from (${sql}) as t "
+    }
+
+
+    @Override
+    String getPageSql(String sql, Object offset, Object limit) {
+        return sql += " OFFSET $offset ROWS FETCH NEXT $limit ROWS ONLY "
+    }
+
+    @Override
+    <T extends TableInfo> String generateDdl(T t, Closure<T> closure = null) {
+        if(closure){
+            return super.generateDdl(t, closure)
+        }
+        def ddl = " CREATE TABLE $t.tableName (\n"
+        def pks= []
+        def primary = ""
+        def comments = []
+        t.fields.each { f ->
+            super.validColName(f.colName)
+            f.with {
+                ddl += " ${getColumn(colName)} "
+
+                switch (dataType.toLowerCase()) {
+                    case "int2":
+                    case "int4":
+                    case "int8":
+                        dataType = "int"
+                        break
+                    case "mediumtext":
+                    case "text":
+                            dataType = "clob"
+                            break
+                }
+                ddl += " $dataType "
+                if (length) {
+
+                    if(!"CLOB".equalsIgnoreCase(dataType)
+                            && !"BLOB".equalsIgnoreCase(dataType)
+                            && !"mediumtext".equalsIgnoreCase(dataType)
+                            && !"text".equalsIgnoreCase(dataType)
+                            && !"int".equalsIgnoreCase(dataType)
+                            && !"int2".equalsIgnoreCase(dataType)
+                            && !"int4".equalsIgnoreCase(dataType)
+                            && !"int8".equalsIgnoreCase(dataType)
+                            && !"date".equalsIgnoreCase(dataType)
+                    ){
+                        if("numeric".equalsIgnoreCase(dataType) && length<=38){
+                            ddl += "($length"
+                            if(scale){
+                                ddl += ",$scale"
+                            }
+                            ddl += ")"
+                        }else if(!"numeric".equalsIgnoreCase(dataType)){
+                            ddl += "($length)"
+                        }
+                    }
+
+
+                }else {
+                    if("CHAR".equalsIgnoreCase(dataType) || "NCHAR".equalsIgnoreCase(dataType)){
+                        ddl = ddl[0.. -(dataType.length() + 1)]
+                        ddl += "VARCHAR(4000)"
+                    }else if("VARCHAR".equalsIgnoreCase(dataType) || "VARCHAR2".equalsIgnoreCase(dataType)){
+                        ddl += "VARCHAR(4000)"
+                    }else if("NVARCHAR".equalsIgnoreCase(dataType) || "NVARCHAR2".equalsIgnoreCase(dataType)){
+                        ddl += "VARCHAR(2000)"
+                    }
+                }
+
+                if (!isNullable) {
+                    ddl += " NOT NULL "
+                }
+                ddl += ","
+                if (isPrimaryKey) {
+                    pks << getColumn(colName)
+                }
+
+                if(comment){
+                    comments << " COMMENT ON COLUMN $t.tableName.${getColumn(colName)} IS '${comment}' "
+                }
+            }
+        }
+
+        if(pks.size() > 0){
+            primary = "PRIMARY KEY (${pks.join(",")})"
+        }
+        ddl += "$primary) "
+        if(t.comment){
+            comments << " COMMENT ON TABLE $t.tableName IS '${t.comment}' "
+        }
+        if(comments.size() > 0){
+            comments.each {
+                ddl += "\n$it"
+            }
+        }
+        return ddl
     }
 }

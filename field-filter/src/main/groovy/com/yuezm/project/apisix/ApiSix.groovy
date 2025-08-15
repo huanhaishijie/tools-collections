@@ -118,7 +118,7 @@ class ApiSix {
 //        def f = ApiSix.createRoute"/serve/apiManage/detail", 10, 300
 //        f = ApiSix.deleteRoute "/serve/apiManage/detail"
 //        println f
-        def route = findRouteExist(2)
+        def route = findRouteExist(24)
         println route
 
 

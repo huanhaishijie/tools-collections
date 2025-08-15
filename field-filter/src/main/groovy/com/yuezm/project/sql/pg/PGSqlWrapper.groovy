@@ -1,5 +1,6 @@
 package com.yuezm.project.sql.pg
 
+import com.yuezm.project.sql.TableInfo
 import com.yuezm.project.sql.Wrapper
 
 
@@ -15,5 +16,98 @@ class PGSqlWrapper extends Wrapper{
     @Override
     String getColumn(String column) {
         return "\"${column}\""
+    }
+
+
+    @Override
+    String getColumns(String... columns) {
+        return columns.collect { getColumn(it) }.join(",")
+    }
+
+    @Override
+    String getColumns(List<String> columns) {
+        return columns.collect { getColumn(it) }.join(",")
+    }
+
+    @Override
+    String getTotalCountSql(String sql) {
+        return "select count(t.*) from (${sql}) as t "
+    }
+
+    @Override
+    String getPageSql(String sql, Object offset, Object limit) {
+        return sql + " limit ${limit} offset ${offset}"
+    }
+
+    @Override
+    <T extends TableInfo> String generateDdl(T t, Closure<T> closure = null) {
+        if(closure){
+            return super.generateDdl(t, closure)
+        }
+        def ddl = " CREATE TABLE $t.tableName (\n"
+        def pks= []
+        def primary = ""
+        def comments = []
+        t?.fields?.each { f ->
+            super.validColName(f.colName)
+            f.with {
+                ddl += " ${getColumn(colName)} "
+                switch (dataType.toLowerCase()){
+                    case "number":
+                        dataType = "decimal"
+                        break
+                    case "clob":
+                    case "mediumtext":
+                        dataType = "text"
+                        break
+                    case "varchar2":
+                    case "nvarchar2":
+                        dataType = "varchar"
+                        break
+                    case "blob":
+                        dataType = "bytea"
+                        break
+                    case "geometry":
+                        dataType = "public.geometry"
+                        break
+                }
+                ddl += " $dataType "
+                if(length){
+                    if(dataType.equalsIgnoreCase("numeric") || dataType.equalsIgnoreCase("decimal")){
+                        ddl += "($length"
+                        if(scale){
+                            ddl += ",$scale"
+                        }
+                        ddl += ")"
+                    }else{
+                        ddl += "($length)"
+                    }
+                }
+
+                if(!isNullable){
+                    ddl += " NOT NULL "
+                }
+                ddl += ","
+                if(isPrimaryKey){
+                    pks << getColumn(colName)
+                }
+                if(comment){
+                    comments << " COMMENT ON COLUMN $t.tableName.${getColumn(colName)} IS '${comment}' ;"
+                }
+            }
+        }
+        if(pks.size() > 0){
+            primary = "PRIMARY KEY (${pks.join(",")})"
+        }
+        ddl += "$primary) ;"
+        if(t.comment){
+            comments << " COMMENT ON TABLE $t.tableName IS '${t.comment}' ;"
+        }
+        if(comments.size() > 0){
+            comments.each {
+                ddl += "\n$it"
+            }
+        }
+        return ddl
     }
 }

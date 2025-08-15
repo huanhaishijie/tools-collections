@@ -2,6 +2,7 @@ package com.yuezm.project.sql.Kingbase
 
 import com.yuezm.project.sql.SqlHandler
 import com.yuezm.project.sql.Wrapper
+import com.yuezm.project.sql.dm.DmWrapper
 
 import java.sql.Connection
 
@@ -147,6 +148,9 @@ class KingbaseSql extends SqlHandler{
 
     @Override
     Wrapper getWrapper() {
-        return new KingbaseWrapper()
+        if(selfWrapper == null){
+            selfWrapper = new KingbaseWrapper()
+        }
+        return selfWrapper
     }
 }
