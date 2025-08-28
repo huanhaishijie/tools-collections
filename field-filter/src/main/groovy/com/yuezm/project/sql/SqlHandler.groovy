@@ -83,4 +83,27 @@ abstract class SqlHandler {
      * @return
      */
     abstract Wrapper getWrapper()
+
+    /**
+     * 获取表的数据容量
+     * @param tableName
+     * @param schema
+     * @return
+     */
+    abstract Number getTableDataCapacity(String tableName, String schema = null)
+
+
+    /**
+     * 获取表的主键
+     * @param tableName
+     * @param schema
+     * @return
+     */
+    abstract List<Map<String, Object>> getTablePrimarys(String tableName, String schema = null)
+
+
+
+
+
+
 }

@@ -71,8 +71,8 @@ class KingbaseWrapper extends Wrapper{
                         dataType = "public.geometry"
                         break
                 }
-                ddl += " $dataType "
-                if(length){
+                ddl += " $dataType"
+                if(length  && isSupportLength(dataType)){
                     if(dataType.equalsIgnoreCase("numeric") || dataType.equalsIgnoreCase("decimal")){
                         ddl += "($length"
                         if(scale){
@@ -87,7 +87,10 @@ class KingbaseWrapper extends Wrapper{
                 if(!isNullable){
                     ddl += " NOT NULL "
                 }
-                ddl += ","
+                if(t?.fields[-1] != it){
+                    ddl += ","
+                }
+
                 if(isPrimaryKey){
                     pks << getColumn(colName)
                 }
@@ -97,6 +100,7 @@ class KingbaseWrapper extends Wrapper{
             }
         }
         if(pks.size() > 0){
+            ddl += ","
             primary = "PRIMARY KEY (${pks.join(",")})"
         }
         ddl += "$primary) ;"
@@ -111,6 +115,25 @@ class KingbaseWrapper extends Wrapper{
         return ddl
     }
 
+
+    private boolean isSupportLength(String dataType){
+        boolean isSupport = true
+        switch (dataType.toLowerCase()){
+            case "int2":
+            case "int4":
+            case "int8":
+            case "float4":
+            case "float8":
+            case "date":
+            case "time":
+            case "timestamp":
+            case "timestamptz":
+            case "text":
+                isSupport = false
+                break
+        }
+        return isSupport
+    }
 
 
 }

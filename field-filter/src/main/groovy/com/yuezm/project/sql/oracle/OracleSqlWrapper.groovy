@@ -31,7 +31,7 @@ class OracleSqlWrapper extends Wrapper{
 
     @Override
     String getTotalCountSql(String sql) {
-        return "select count(t.*) from (${sql}) as t "
+        return "select count(*) from (${sql})  t "
     }
 
 
@@ -65,8 +65,8 @@ class OracleSqlWrapper extends Wrapper{
                             dataType = "clob"
                             break
                 }
-                ddl += " $dataType "
-                if (length) {
+                ddl += " $dataType"
+                if (length && isSupportLength(dataType)) {
 
                     if(!"CLOB".equalsIgnoreCase(dataType)
                             && !"BLOB".equalsIgnoreCase(dataType)
@@ -95,8 +95,10 @@ class OracleSqlWrapper extends Wrapper{
                         ddl = ddl[0.. -(dataType.length() + 1)]
                         ddl += "VARCHAR(4000)"
                     }else if("VARCHAR".equalsIgnoreCase(dataType) || "VARCHAR2".equalsIgnoreCase(dataType)){
+                        ddl = ddl[0.. -(dataType.length() + 1)]
                         ddl += "VARCHAR(4000)"
                     }else if("NVARCHAR".equalsIgnoreCase(dataType) || "NVARCHAR2".equalsIgnoreCase(dataType)){
+                        ddl = ddl[0.. -(dataType.length() + 1)]
                         ddl += "VARCHAR(2000)"
                     }
                 }
@@ -104,29 +106,53 @@ class OracleSqlWrapper extends Wrapper{
                 if (!isNullable) {
                     ddl += " NOT NULL "
                 }
-                ddl += ","
+                if(t.fields[-1] != it){
+                    ddl += ","
+                }
+
                 if (isPrimaryKey) {
                     pks << getColumn(colName)
                 }
 
                 if(comment){
-                    comments << " COMMENT ON COLUMN $t.tableName.${getColumn(colName)} IS '${comment}' "
+                    comments << " COMMENT ON COLUMN $t.tableName.${getColumn(colName)} IS '${comment}';"
                 }
             }
         }
 
         if(pks.size() > 0){
+            ddl += ","
             primary = "PRIMARY KEY (${pks.join(",")})"
         }
-        ddl += "$primary) "
+        ddl += "$primary);"
         if(t.comment){
-            comments << " COMMENT ON TABLE $t.tableName IS '${t.comment}' "
+            comments << " COMMENT ON TABLE $t.tableName IS '${t.comment}';"
         }
         if(comments.size() > 0){
             comments.each {
-                ddl += "\n$it"
+                ddl += "$it"
             }
         }
         return ddl
+    }
+
+
+    private boolean isSupportLength(String dataType){
+        boolean isSupport = true
+        switch (dataType.toLowerCase()){
+            case "number":
+            case "binary_float":
+            case "binary_double":
+            case "clob":
+            case "nclob":
+            case "date":
+            case "long":
+            case "blob":
+            case "bfile":
+            case "text":
+                isSupport = false
+                break
+        }
+        return isSupport
     }
 }

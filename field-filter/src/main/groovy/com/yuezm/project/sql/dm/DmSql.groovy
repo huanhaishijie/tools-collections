@@ -155,4 +155,28 @@ class DmSql extends SqlHandler{
         }
         return selfWrapper
     }
+
+    @Override
+    Number getTableDataCapacity(String tableName, String schema = null) {
+        String sql = " SELECT \n" +
+                "    SUM(bytes)  size_mb\n" +
+                "FROM \n" +
+                "    user_segments\n" +
+                "WHERE \n" +
+                "    segment_name = '$tableName'\n" +
+                "GROUP BY \n" +
+                "    segment_name"
+        return firstRow(sql)?["size_mb"] as Number
+    }
+
+    @Override
+    List<Map<String, Object>> getTablePrimarys(String tableName, String schema = null) {
+        String sql = "SELECT cols.column_name\n" +
+                "FROM user_constraints cons\n" +
+                "JOIN user_cons_columns cols\n" +
+                "  ON cons.constraint_name = cols.constraint_name\n" +
+                "WHERE cons.constraint_type = 'P'\n" +
+                "  AND cons.table_name = UPPER('$tableName')"
+        return rows(sql)
+    }
 }

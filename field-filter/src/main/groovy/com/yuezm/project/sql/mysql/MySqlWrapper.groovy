@@ -30,12 +30,12 @@ class MySqlWrapper extends Wrapper {
 
     @Override
     String getTotalCountSql(String sql) {
-        return "select count(t.*) from (${sql}) as t "
+        return "select count(*) from (${sql}) as t "
     }
 
     @Override
     String getPageSql(String sql, Object offset, Object limit) {
-        return sql + " limit ${limit},${offset}"
+        return sql + " limit ${offset},${limit}"
     }
 
     @Override
@@ -64,8 +64,8 @@ class MySqlWrapper extends Wrapper {
                         dataType = "varchar"
                         break
                 }
-                ddl += " ${getColumn(colName)} $dataType "
-                if (length) {
+                ddl += " ${getColumn(colName)} $dataType"
+                if (length && isSupportLength(dataType)) {
                     if (!"CLOB".equalsIgnoreCase(dataType)) {
                         if (("numeric".equalsIgnoreCase(dataType) || "decimal".equalsIgnoreCase(dataType)) && length <= 65) {
                             ddl += "($length"
@@ -79,6 +79,7 @@ class MySqlWrapper extends Wrapper {
                     }
                 } else {
                     if ("VARCHAR".equalsIgnoreCase(dataType) || "VARCHAR2".equalsIgnoreCase(dataType)) {
+                        ddl = ddl[0.. -(dataType.length() + 1)]
                         ddl += "VARCHAR(510)"
                     }
                 }
@@ -91,18 +92,22 @@ class MySqlWrapper extends Wrapper {
                     }
                 }
 
+                if (comment) {
+                    ddl += " COMMENT '$comment'"
+                }
                 if (isPrimaryKey) {
                     pks << getColumn(colName)
                 }
 
-                if (comment) {
-                    ddl += " COMMENT  ON '$comment'"
+                if (t.fields[-1] != it) {
+                    ddl += ","
                 }
-                ddl += ","
+
             }
         }
 
         if (pks.size() > 0) {
+            ddl += ","
             primary = "PRIMARY KEY (${pks.join(",")})"
         }
         ddl += " $primary )"
@@ -112,6 +117,56 @@ class MySqlWrapper extends Wrapper {
         }
         ddl += ";"
         return ddl
+    }
+
+    private boolean isSupportLength(String dataType) {
+        boolean isSupport = true
+        switch (dataType.toLowerCase()) {
+
+        // 整数类型（MySQL 8.0 已废弃显示宽度，不支持 length）
+            case "tinyint":
+            case "smallint":
+            case "mediumint":
+            case "int":
+            case "integer":
+            case "bigint":
+                isSupport = false
+                break
+
+                // 浮点类型（不支持 length，decimal 只能写精度 p,s，不算长度）
+            case "float":
+            case "double":
+            case "real":
+                isSupport = false
+                break
+
+                // 日期时间类型（只有 time/timestamp 可写 fsp，其它不支持长度）
+            case "date":
+            case "datetime":
+            case "year":
+                isSupport = false
+                break
+
+                // 文本/大对象类型
+            case "text":
+            case "tinytext":
+            case "mediumtext":
+            case "longtext":
+            case "blob":
+            case "tinyblob":
+            case "mediumblob":
+            case "longblob":
+                isSupport = false
+                break
+
+                // JSON、枚举、集合
+            case "json":
+            case "enum":
+            case "set":
+                isSupport = false
+                break
+        }
+        return isSupport
     }
 
 

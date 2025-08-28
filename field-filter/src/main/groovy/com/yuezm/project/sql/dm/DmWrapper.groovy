@@ -30,7 +30,7 @@ class DmWrapper extends Wrapper {
 
     @Override
     String getTotalCountSql(String sql) {
-        return "select count(t.*) from (${sql}) as t "
+        return "select count(*) from (${sql}) as t "
     }
 
 
@@ -54,13 +54,13 @@ class DmWrapper extends Wrapper {
             it.with {self ->
                 if(dataType.equalsIgnoreCase("int2") || dataType.equalsIgnoreCase("int4")||dataType.equalsIgnoreCase("int8")){
                     dataType="int"
-                }else if(dataType.equalsIgnoreCase("mediumtext") || dataType.equalsIgnoreCase("text")) {
+                }else if(dataType.equalsIgnoreCase("mediumtext")) {
                     dataType="clob"
                 }
             }
 
-            ddl += " $colName $it.dataType "
-            if (it.length) {
+            ddl += " $colName $it.dataType"
+            if (it.length && isSupportLength(it.dataType)) {
                 if(!"CLOB".equalsIgnoreCase(it.dataType)
                         && !"BLOB".equalsIgnoreCase(it.dataType)
                         && !"mediumtext".equalsIgnoreCase(it.dataType)
@@ -87,16 +87,21 @@ class DmWrapper extends Wrapper {
                     ddl = ddl[0.. -(it.dataType.length() + 1)]
                     ddl += "VARCHAR(4000)"
                 }else if("VARCHAR".equalsIgnoreCase(it.dataType) || "VARCHAR2".equalsIgnoreCase(it.dataType)){
+                    ddl = ddl[0.. -(it.dataType.length() + 1)]
                     ddl += "VARCHAR(4000)"
                 }else if("NVARCHAR".equalsIgnoreCase(it.dataType) || "NVARCHAR2".equalsIgnoreCase(it.dataType)){
+                    ddl = ddl[0.. -(it.dataType.length() + 1)]
                     ddl += "VARCHAR(2000)"
                 }
             }
             if (!it.isNullable) {
                 ddl += " NOT NULL"
             }
-            ddl += ","
+            if(t?.fields[-1] != it){
+                ddl += ","
+            }
             if (it.isPrimaryKey) {
+                t?.fields
                 primary = "PRIMARY KEY ($colName)"
             }
             if (it.comment) {
@@ -106,6 +111,9 @@ class DmWrapper extends Wrapper {
         if (t.comment) {
             comments << " COMMENT ON TABLE $t.tableName IS '${t.comment}';"
         }
+        if(primary){
+            ddl += ","
+        }
         ddl += "$primary);"
         if (comments.size() > 0) {
             comments.each {
@@ -113,6 +121,26 @@ class DmWrapper extends Wrapper {
             }
         }
         return ddl
+    }
+
+
+    private boolean isSupportLength(String dataType){
+        boolean isSupport = true
+        switch (dataType.toLowerCase()){
+            case "number":
+            case "binary_float":
+            case "binary_double":
+            case "clob":
+            case "nclob":
+            case "date":
+            case "long":
+            case "blob":
+            case "bfile":
+            case "text":
+                isSupport = false
+                break
+        }
+        return isSupport
     }
 
 

@@ -7,16 +7,15 @@
     <groupId>com.yzm.project</groupId>
     <artifactId>field-filter</artifactId>
     <version>1.0.0</version>
-
-    <distributionManagement>
+    <repositories>
         <repository>
             <id>yzm-central</id> <!-- 该 ID 应与您在 settings.xml 中配置的服务器 ID 匹配 -->
             <url>http://47.109.156.230:13888/repository/internal/</url> <!-- 替换为您的仓库 URL -->
         </repository>
-        <snapshotRepository>
-            <id>yzm-snapshots</id> <!-- 可选，针对快照的仓库 -->
-            <url>http://47.109.156.230:13888/repository/snapshots</url> <!-- 替换为您的快照仓库 URL -->
-        </snapshotRepository>
+    </repositories>
+
+    <distributionManagement>
+
     </distributionManagement>
 
     <dependencies>

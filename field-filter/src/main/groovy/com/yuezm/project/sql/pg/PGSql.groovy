@@ -194,4 +194,32 @@ class PGSql extends SqlHandler {
         }
         return selfWrapper
     }
+
+    @Override
+    Number getTableDataCapacity(String tableName, String schema = null) {
+        String sql = "SELECT pg_total_relation_size('$tableName') AS total_size"
+        return firstRow(sql)?["total_size"] as Number
+    }
+
+
+
+    @Override
+    List<Map<String, Object>> getTablePrimarys(String tableName, String schema = null) {
+        String sql = "SELECT kcu.column_name \"COLUMN_NAME\" " +
+                "FROM information_schema.table_constraints tc\n" +
+                "JOIN information_schema.key_column_usage kcu\n" +
+                "  ON tc.constraint_name = kcu.constraint_name\n" +
+                "  AND tc.table_schema = kcu.table_schema\n" +
+                "WHERE tc.constraint_type = 'PRIMARY KEY'\n" +
+                "  AND tc.table_name = '$tableName'\n" +
+                "  AND tc.table_schema = '$schema';"
+        return rows(sql)
+    }
+
+
+
+
+
+
+
 }
