@@ -101,6 +101,14 @@ abstract class SqlHandler {
      */
     abstract List<Map<String, Object>> getTablePrimarys(String tableName, String schema = null)
 
+    /**
+     * 获取表详情
+     * @param tableName
+     * @param schema
+     * @return
+     */
+    abstract TableInfo getTableInfo(String tableName, String schema = null)
+
 
 
 

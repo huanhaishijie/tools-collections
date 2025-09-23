@@ -78,45 +78,47 @@ class FieldFilter {
             }catch (Exception e){
                 return
             }
-
         }
 
         data = new JsonSlurper().parseText(new String(((String)data).getBytes("UTF-8")))
-        if(data instanceof List){
-            stackVal.add([type: FieldEnum.array, key: "root", val: data])
-        }
-        def tempRoot = [data]
+
+        // 队列里带 path
+        def tempRoot = [[val: data, path: "root"]]
         def recordRoots = []
+
         for(int i=0;i<tempRoot.size();i++){
             def root = tempRoot[i]
-            if(root instanceof Map){
-                root.each { k,v ->
-                    if(v instanceof Map || v instanceof List){
-                        recordRoots.add(v)
-                        if(v instanceof List){
-                            stackVal.add([type: FieldEnum.array, key: k, val: v])
-                        }else {
-                            stackVal.add([type: FieldEnum.map, key: k, val: v])
-                        }
+
+            if(root.val instanceof Map){
+                root.val.each { k,v ->
+                    def newPath = root.path == "root" ? k : root.path + "." + k
+                    if(v instanceof Map){
+                        stackVal.add([type: FieldEnum.map, key: k, val: v, path: newPath])
+                        recordRoots.add([val: v, path: newPath])
+                    }else if(v instanceof List){
+                        def listPath = newPath + "[*]"
+                        stackVal.add([type: FieldEnum.array, key: k, val: v, path: listPath])
+                        recordRoots.add([val: v, path: listPath])
                     }else {
-                        stackVal.add([type: FieldEnum.val, key: k, val: v])
+                        stackVal.add([type: FieldEnum.val, key: k, val: v, path: newPath])
                     }
                 }
-            }else if(root instanceof List){
-                root.each { v ->
-                    if(v instanceof Map || v instanceof List){
-                        recordRoots.add(v)
-                    }
+            }else if(root.val instanceof List){
+                root.val.each { v ->
+                    recordRoots.add([val: v, path: root.path + "[*]"])
                 }
             }
+
             if(i == tempRoot.size() - 1 && recordRoots.size() > 0){
                 tempRoot = recordRoots
                 recordRoots = []
                 i = -1
             }
         }
+
         dispose(dataBack)
     }
+
 
     private void dispose(Object dataBack){
         def fields = dataBack.getClass().getFields() + dataBack.getClass().getDeclaredFields()

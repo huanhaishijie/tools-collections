@@ -3,6 +3,7 @@ package com.yuezm.project.tugraph
 import cn.hutool.json.JSONUtil
 import com.yuezm.project.common.SnowFlakeWorker
 import groovy.json.JsonSlurper
+import groovy.util.logging.Log
 import org.apache.groovy.util.Maps
 import org.neo4j.driver.SessionConfig
 import org.neo4j.driver.internal.InternalRelationship
@@ -15,6 +16,7 @@ import org.neo4j.driver.internal.InternalRelationship
  * @description ${TODO}
  * @date 2025/6/27 11:38
  */
+@Log
 class Graph implements Serializable {
     String name
     List<? extends Node> nodeList
@@ -314,7 +316,13 @@ class Graph implements Serializable {
                             }
                             props << it
                         }
-                        d.upsertEdgeData2(name, k, [[type: orientation[0], key: nodePrimary[orientation[0]]], [type: orientation[1], key: nodePrimary[orientation[1]]]], props, v2)
+                        try {
+                            d.upsertEdgeData2(name, k, [[type: orientation[0], key: nodePrimary[orientation[0]]], [type: orientation[1], key: nodePrimary[orientation[1]]]], props, v2)
+                        }catch (Exception e){
+                            e.printStackTrace()
+                            log.info("upsertEdgeData2 error: ${e.message}")
+                        }
+
                     }
                 }
             }

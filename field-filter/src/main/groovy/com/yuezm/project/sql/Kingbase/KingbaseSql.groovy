@@ -1,8 +1,11 @@
 package com.yuezm.project.sql.Kingbase
 
 import com.yuezm.project.sql.SqlHandler
+import com.yuezm.project.sql.TableField
+import com.yuezm.project.sql.TableInfo
 import com.yuezm.project.sql.Wrapper
 import com.yuezm.project.sql.dm.DmWrapper
+import groovy.sql.GroovyRowResult
 
 import java.sql.Connection
 
@@ -156,7 +159,7 @@ class KingbaseSql extends SqlHandler{
 
     @Override
     Number getTableDataCapacity(String tableName, String schema = null) {
-        String sql = "SELECT pg_total_relation_size('$tableName') AS total_size"
+        String sql = "SELECT pg_total_relation_size('$tableName') AS total_size".toString()
         return firstRow(sql)?["total_size"] as Number
     }
 
@@ -170,9 +173,67 @@ class KingbaseSql extends SqlHandler{
                 "  AND tc.table_schema = kcu.table_schema\n" +
                 "WHERE tc.constraint_type = 'PRIMARY KEY'\n" +
                 "  AND tc.table_name = '$tableName'\n" +
-                "  AND tc.table_schema = '$schema';"
+                "  AND tc.table_schema = '$schema';".toString()
         return rows(sql)
     }
 
 
+
+    @Override
+    TableInfo getTableInfo(String tableName, String schema = null) {
+        def info = new TableInfo()
+        String sql = "SELECT\n" +
+                "    obj_description(relfilenode, 'pg_class') AS table_comment\n" +
+                "FROM pg_class\n" +
+                "WHERE relname = '$tableName'\n" +
+                "  AND relnamespace = (SELECT oid FROM pg_namespace WHERE nspname = '$schema');"
+        def row = firstRow(sql)
+        if(row){
+            info.comment = row?["table_comment"]
+        }
+        sql = "SELECT\n" +
+                "    c.ordinal_position AS column_id,\n" +
+                "    c.column_name,\n" +
+                "    c.data_type,\n" +
+                "    c.character_maximum_length,\n" +
+                "    c.numeric_precision,\n" +
+                "    c.numeric_scale,\n" +
+                "    c.is_nullable,\n" +
+                "    c.column_default,\n" +
+                "    d.description AS column_comment,\n" +
+                "    CASE WHEN kcu.column_name IS NOT NULL THEN 'YES' ELSE 'NO' END AS is_primary_key\n" +
+                "FROM information_schema.columns c\n" +
+                "LEFT JOIN pg_catalog.pg_description d\n" +
+                "       ON d.objoid = (SELECT oid FROM pg_class WHERE relname = c.table_name\n" +
+                "                      AND relnamespace = (SELECT oid FROM pg_namespace WHERE nspname = c.table_schema))\n" +
+                "      AND d.objsubid = c.ordinal_position\n" +
+                "LEFT JOIN information_schema.key_column_usage kcu\n" +
+                "       ON c.table_name = kcu.table_name\n" +
+                "      AND c.table_schema = kcu.table_schema\n" +
+                "      AND c.column_name = kcu.column_name\n" +
+                "      AND kcu.constraint_name IN (\n" +
+                "            SELECT constraint_name\n" +
+                "            FROM information_schema.table_constraints\n" +
+                "            WHERE table_name = c.table_name\n" +
+                "              AND table_schema = c.table_schema\n" +
+                "              AND constraint_type = 'PRIMARY KEY'\n" +
+                "       )\n" +
+                "WHERE c.table_name = '$tableName'\n" +
+                "  AND c.table_schema = '$schema'\n" +
+                "ORDER BY c.ordinal_position;".toString()
+        def results = rows(sql)
+        info.fields = results.collect {
+             return new TableField(
+                     colName: it["column_name"],
+                     dataType: it["data_type"],
+                     comment: it["column_comment"],
+                     isNullable: it["is_nullable"] == "YES",
+                     defaultValue: it["column_default"],
+                     scale: it["numeric_scale"] as Integer,
+                     length: it["character_maximum_length"] as Integer,
+                     isPrimaryKey: it["is_primary_key"] == "YES"
+             )
+        }
+        return info
+    }
 }

@@ -1,9 +1,12 @@
 package com.yuezm.project.sql.mysql
 
 import com.yuezm.project.sql.SqlHandler
+import com.yuezm.project.sql.TableField
+import com.yuezm.project.sql.TableInfo
 import com.yuezm.project.sql.Wrapper
 import com.yuezm.project.sql.dm.DmWrapper
 
+import javax.swing.table.TableColumn
 import java.sql.Connection
 
 
@@ -150,7 +153,7 @@ class MySql extends SqlHandler {
         if(selfWrapper == null){
             selfWrapper = new MySqlWrapper()
         }
-        return wrapper
+        return selfWrapper
     }
 
 
@@ -174,5 +177,47 @@ class MySql extends SqlHandler {
                 "  AND CONSTRAINT_NAME = 'PRIMARY';"
 
         return rows(sql)
+    }
+
+
+    @Override
+    TableInfo getTableInfo(String tableName, String schema = null) {
+        String sql = "select TABLE_SCHEMA,TABLE_COMMENT from information_schema.TABLES  where TABLE_NAME = '$tableName' and TABLE_SCHEMA = '$schema'"
+        def tableInfo = firstRow(sql)
+        if(tableInfo == null){
+            return null
+        }
+        def t = new TableInfo()
+        t.tableName = tableInfo?["TABLE_SCHEMA"]
+        t.comment = tableInfo?["TABLE_COMMENT"]
+        sql = "SELECT \n" +
+                "    COLUMN_NAME,\n" +
+                "    COLUMN_TYPE,\n" +
+                "    IS_NULLABLE,\n" +
+                "    COLUMN_KEY,\n" +
+                "    COLUMN_DEFAULT,\n" +
+                "    EXTRA,\n" +
+                "    COLUMN_COMMENT,\n" +
+                "    CHARACTER_SET_NAME,\n" +
+                "    COLLATION_NAME\n" +
+                "FROM information_schema.COLUMNS\n" +
+                "WHERE \n" +
+                "  TABLE_NAME = '$tableName' "
+
+        def columns = rows(sql)
+        def fields = columns?.collect { column ->
+
+            return new TableField(
+                    colName: column?["COLUMN_NAME"],
+                    dataType: column?["COLUMN_TYPE"],
+                    comment: column?["COLUMN_COMMENT"],
+                    isNullable: column?["IS_NULLABLE"]?.toString() == "NO",
+                    isPrimaryKey: column?["COLUMN_KEY"]?.toString() == "PRI",
+            )
+        }
+
+        t.fields = fields
+        return t
+
     }
 }

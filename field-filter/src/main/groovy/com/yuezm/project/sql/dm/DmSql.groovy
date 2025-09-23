@@ -1,6 +1,8 @@
 package com.yuezm.project.sql.dm
 
 import com.yuezm.project.sql.SqlHandler
+import com.yuezm.project.sql.TableField
+import com.yuezm.project.sql.TableInfo
 import com.yuezm.project.sql.Wrapper
 
 import java.sql.Connection
@@ -165,7 +167,7 @@ class DmSql extends SqlHandler{
                 "WHERE \n" +
                 "    segment_name = '$tableName'\n" +
                 "GROUP BY \n" +
-                "    segment_name"
+                "    segment_name".toString()
         return firstRow(sql)?["size_mb"] as Number
     }
 
@@ -176,7 +178,48 @@ class DmSql extends SqlHandler{
                 "JOIN user_cons_columns cols\n" +
                 "  ON cons.constraint_name = cols.constraint_name\n" +
                 "WHERE cons.constraint_type = 'P'\n" +
-                "  AND cons.table_name = UPPER('$tableName')"
+                "  AND cons.table_name = UPPER('$tableName')".toString()
         return rows(sql)
     }
+
+
+    @Override
+    TableInfo getTableInfo(String tableName, String schema = null) {
+        String sql = "SELECT \n" +
+                "    TABLE_NAME, \n" +
+                "    COMMENTS \n" +
+                "FROM ALL_TAB_COMMENTS\n" +
+                "WHERE TABLE_NAME = '$tableName'\n" +
+                "  AND OWNER = UPPER('$schema')".toString()
+        def row = firstRow(sql)
+        if(row == null){
+            return null
+        }
+        def t = new TableInfo(tableName: row?["TABLE_NAME"], comment: row?["COMMENTS"])
+        sql = "SELECT \n" +
+                "    COLUMN_NAME,\n" +
+                "    DATA_TYPE,\n" +
+                "    DATA_LENGTH,\n" +
+                "    DATA_PRECISION,\n" +
+                "    DATA_SCALE,\n" +
+                "    NULLABLE,\n" +
+                "    DATA_DEFAULT\n" +
+                "FROM ALL_TAB_COLUMNS\n" +
+                "WHERE TABLE_NAME = '$tableName'\n" +
+                "  AND OWNER = UPPER('$schema')\n" +
+                "ORDER BY COLUMN_ID".toString()
+        def columns = rows(sql)
+        t.fields = columns.collect { column ->
+            return new TableField(
+                    colName: column?["COLUMN_NAME"],
+                    dataType: column?["DATA_TYPE"],
+                    length: column?["DATA_LENGTH"] as Integer
+                    , scale: column?["DATA_SCALE"] as Integer,
+                    isNullable: column?["NULLABLE"]?.toString() == "Y",
+                    defaultValue: column?["DATA_DEFAULT"])
+        }
+        return t
+    }
+
+
 }
