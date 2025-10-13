@@ -189,8 +189,8 @@ class DmSql extends SqlHandler{
                 "    TABLE_NAME, \n" +
                 "    COMMENTS \n" +
                 "FROM ALL_TAB_COMMENTS\n" +
-                "WHERE TABLE_NAME = '$tableName'\n" +
-                "  AND OWNER = UPPER('$schema')".toString()
+                "WHERE TABLE_NAME = '$tableName'\n"
+
         def row = firstRow(sql)
         if(row == null){
             return null
@@ -206,7 +206,6 @@ class DmSql extends SqlHandler{
                 "    DATA_DEFAULT\n" +
                 "FROM ALL_TAB_COLUMNS\n" +
                 "WHERE TABLE_NAME = '$tableName'\n" +
-                "  AND OWNER = UPPER('$schema')\n" +
                 "ORDER BY COLUMN_ID".toString()
         def columns = rows(sql)
         t.fields = columns.collect { column ->

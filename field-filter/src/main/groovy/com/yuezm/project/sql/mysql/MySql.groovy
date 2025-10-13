@@ -161,9 +161,9 @@ class MySql extends SqlHandler {
     Number getTableDataCapacity(String tableName, String schema = null) {
         String sql = "SELECT " +
                 "    ROUND((data_length + index_length) , 2) AS `total` " +
-                "FROM information_schema.TABLES" +
-                "WHERE table_schema = $schema " +
-                "  AND table_name = $tableName; "
+                "FROM information_schema.TABLES " +
+                "WHERE table_schema = '$schema' " +
+                "  AND table_name = '$tableName'; "
         return firstRow(sql)?["total"] as Number
     }
 
@@ -172,8 +172,8 @@ class MySql extends SqlHandler {
         String sql ="SELECT\n" +
                 "    COLUMN_NAME \n" +
                 "FROM information_schema.KEY_COLUMN_USAGE\n" +
-                "WHERE TABLE_SCHEMA = $schema\n" +
-                "  AND TABLE_NAME = $tableName\n" +
+                "WHERE TABLE_SCHEMA = '$schema'\n" +
+                "  AND TABLE_NAME = '$tableName'\n" +
                 "  AND CONSTRAINT_NAME = 'PRIMARY';"
 
         return rows(sql)

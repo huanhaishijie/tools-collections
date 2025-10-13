@@ -74,13 +74,15 @@ class WordTemplateUtil2 {
                     if(text && text.length() > 0 && text.contains("\${")){
                         def ps = extractParams(text)
                         ps.each {p ->
-                            if(map.containsKey(p) && map[p]){
+                            if(map.containsKey(p) && map[p] != null){
                                 if(map[p] instanceof List){
                                     return
                                 }
-                                def val = map[p].toString()
-                                text = text.replace("\${$p}", val)
-                                run.setText(text, 0)
+                                def val = map[p]?.toString()
+                                if(val != null){
+                                    text = text.replace("\${$p}", val)
+                                    run.setText(text, 0)
+                                }
                             }
                         }
                     }
@@ -144,7 +146,7 @@ class WordTemplateUtil2 {
                                             ps.each {p ->
 
                                                 def v1 = getVal(v, p as String)
-                                                if(v1){
+                                                if(v1 != null){
                                                     t = t.replace("\${$p}", v1?.toString())
                                                     run.setText(t, 0)
                                                 }
@@ -171,7 +173,7 @@ class WordTemplateUtil2 {
                                 def text = templateCell.getText()
                                 def key = extractParams(text)?[0] as String
                                 def val1 = getVal(val, key)
-                                if(val1){
+                                if(val1 != null){
                                     cell.setText(text.replace("\${$key}", val1?.toString()))
                                 }
 
@@ -272,7 +274,7 @@ class WordTemplateUtil2 {
             byteArrayOutputStream.close()
             inputStream.close()
         }catch (Exception e){
-           e.printStackTrace()
+            e.printStackTrace()
         }
         return mainDoc
     }
