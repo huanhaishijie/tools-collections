@@ -6,6 +6,7 @@ import com.yuezm.project.sql.TableInfo
 import com.yuezm.project.sql.Wrapper
 
 import java.sql.Connection
+import java.sql.SQLException
 
 
 /**
@@ -218,6 +219,15 @@ class DmSql extends SqlHandler{
                     defaultValue: column?["DATA_DEFAULT"])
         }
         return t
+    }
+
+    boolean execute(String sql) throws SQLException {
+        if(sql?.contains(";")){
+            sql.split(";(?=(?:[^']*'[^']*')*[^']*\$)").collect { it.trim()}.findAll { it}.each {
+                super.execute(it)
+            }
+        }
+        return true
     }
 
 
