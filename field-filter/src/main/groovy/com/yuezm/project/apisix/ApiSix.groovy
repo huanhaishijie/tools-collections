@@ -37,7 +37,7 @@ class ApiSix {
                 plugins:[
                         "limit-req":[
                                 rate: qps,
-                                burst: 0,
+                                burst: qps,
                                 "rejected_code": 503,
                                 "key_type": "var",
                                 "key": "remote_addr"

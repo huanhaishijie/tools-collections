@@ -88,7 +88,7 @@ class MySqlWrapper extends Wrapper {
                     ddl += " NOT NULL"
                 } else {
                     if (dataType.equalsIgnoreCase("timestamp")) {
-                        ddl += " DEFAULT CURRENT_TIMESTAMP"
+//                        ddl += " DEFAULT CURRENT_TIMESTAMP"
                     }
                 }
 
