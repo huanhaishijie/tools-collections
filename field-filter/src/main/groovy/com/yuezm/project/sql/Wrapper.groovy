@@ -28,7 +28,7 @@ abstract class Wrapper {
         return sqlBuilder
     }
 
-    abstract String getTotalCountSql(String sql)
+    abstract String getTotalCountSql(String sql, Boolean isSingleFrom = false)
 
     abstract String getPageSql(String sql , Object offset , Object limit)
 

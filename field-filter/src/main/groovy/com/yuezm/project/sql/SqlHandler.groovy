@@ -22,6 +22,7 @@ abstract class SqlHandler {
 
     static Closure sqlHandlerFactory = null
     static BiFunction<String,Connection, SqlHandler> sqlHandlerFactory2 = null
+//    protected Map<String, >datasourcePool =
 
     protected Wrapper selfWrapper
 
@@ -33,6 +34,12 @@ abstract class SqlHandler {
         this.connection = connection
         sql = new Sql(connection)
     }
+    SqlHandler(Map<String, String> config){
+        this.connection = HikariConnectionManager.getConnection(config)
+        sql = new Sql(connection)
+    }
+
+
     protected SqlHandler() {
 
     }

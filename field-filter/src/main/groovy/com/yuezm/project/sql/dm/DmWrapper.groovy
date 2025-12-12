@@ -29,7 +29,36 @@ class DmWrapper extends Wrapper {
     }
 
     @Override
-    String getTotalCountSql(String sql) {
+    String getTotalCountSql(String sql, Boolean isSingleFrom = false) {
+        if(isSingleFrom){
+            if(sql.contains("SELECT")){
+                sql = sql.replace("SELECT", "select")
+            }
+            if(sql.contains("FROM")){
+                sql = sql.replace("FROM", "from")
+            }
+            //将sql select 到 from 替换为count(*)
+            if(sql.contains("select ") && sql.contains(" from")) {
+                def fromIndex = sql.indexOf(" from")
+                def selectIndex = sql.indexOf("select ") + "select ".length()
+                sql = sql.substring(0, selectIndex) + " count(*) " + sql.substring(fromIndex)
+            }
+            if(sql.contains("ORDER BY")){
+                sql = sql.replace("ORDER BY", "order by")
+            }
+            if(sql.contains("order BY")){
+                sql = sql.replace("order BY", "order by")
+            }
+            if(sql.contains("ORDER by")){
+                sql = sql.replace("ORDER by", "order by")
+            }
+            if(sql.contains("order by")){
+                //将sql 从order by 后面开始丢弃
+                def orderIndex = sql.indexOf("order by")
+                sql = sql.substring(0, orderIndex)
+            }
+            return sql
+        }
         return "select count(*) from (${sql}) as t "
     }
 
