@@ -1,0 +1,43 @@
+syntax = "proto3";
+
+package dbgateway;
+
+option java_multiple_files = true;
+option java_package = "com.yuezm.project.connector.proto";
+option java_outer_classname = "DbGatewayCommonProto";
+
+message RequestInfo {
+  string replyChannel = 1;  // 客户端的 UDP 通道
+  int32 replyStream = 2;    // 客户端要监听的 stream id
+  string chatId = 3;   // 服务器要监听的 stream id
+}
+//执行方法
+message ExecInfo{
+  RequestInfo requestInfo = 1;
+  string method = 2;
+}
+message Response{
+  ExecInfo exec = 1;
+  int32 code = 2;
+  string message = 3;
+  map<string, string> data = 4;
+}
+
+message DataSourceInfo{
+  ExecInfo exec = 1;
+  string url = 2;
+  string type = 3;
+  string username = 4;
+  string password = 5;
+  int32 maxPoolSize = 6;
+  int32 minPoolSize = 7;
+  int32 idleTimeout = 8;
+  int32 connectionTimeout = 9;
+  map<string, string> other = 10;
+}
+
+
+
+
+
+
