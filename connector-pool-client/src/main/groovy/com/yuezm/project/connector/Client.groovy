@@ -1,10 +1,12 @@
-import com.yuezm.project.connector.Chat
+package com.yuezm.project.connector
+
 import com.yuezm.project.connector.proto.DataSourceInfo
 import com.yuezm.project.connector.proto.ExecInfo
 import com.yuezm.project.connector.proto.RequestInfo
 import com.yuezm.project.connector.proto.Response
 import groovyx.gpars.actor.Actors
 import io.aeron.Aeron
+import io.aeron.FragmentAssembler
 import io.aeron.Publication
 import io.aeron.Subscription
 import io.aeron.driver.MediaDriver
@@ -15,6 +17,7 @@ import org.agrona.concurrent.UnsafeBuffer
 
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicInteger
 
 class Client {
     String host = "127.0.0.1"
@@ -22,8 +25,11 @@ class Client {
     private static final int serverStreamId = 2500
     int port
     int streamId
+    String model
+    String shell
+
     private static final String CLIENT_URL_PREFIX = "aeron:udp?endpoint="
-    private static Client instance = null
+    static Client instance = null
     private static Aeron aeron
     private static MediaDriver mediaDriver
     private static final AtomicBoolean running = new AtomicBoolean(true)
@@ -31,18 +37,23 @@ class Client {
     private static final ConcurrentHashMap<String, Chat> chats = [:]
     private static Subscription clientSub
 
-    private Client(String host = "127.0.0.1", int port = 38881, int streamId = 2500, String serverHost = "127.0.0.1") {
+    private static final AtomicInteger rr = new AtomicInteger(0)
+    private static List workers = []
+
+    private Client(String host = "127.0.0.1", int port = 38881, int streamId = 2500, String serverHost = "127.0.0.1", String model = "local", String shell = "") {
         this.host = host
         this.port = port
         this.streamId = streamId
         this.serverHost = serverHost
+        this.model = model
+        this.shell = shell
     }
 
-    static Client getInstance(String host = "127.0.0.1", int port = 38881, int streamId = 2500, String serverHost = "127.0.0.1") {
+    static Client getInstance(String host = "127.0.0.1", int port = 38881, int streamId = 2500, String serverHost = "127.0.0.1", String model = "local", String shell = "") {
         if (instance == null) {
             synchronized (Client.class) {
                 if (instance == null) {
-                    instance = new Client(host, port, streamId, serverHost)
+                    instance = new Client(host, port, streamId, serverHost, model, shell)
                     initAeron()
                 }
             }
@@ -51,46 +62,68 @@ class Client {
     }
 
     private static void initAeron() {
-        // 初始化 MediaDriver
-        mediaDriver = MediaDriver.launchEmbedded()
+        // 启动 MediaDriver 并清理旧目录
+        mediaDriver = MediaDriver.launch(
+                new MediaDriver.Context()
+                        .dirDeleteOnStart(true)
+                        .dirDeleteOnShutdown(true)
+        )
 
         // 初始化 Aeron 客户端
-        aeron = Aeron.connect(new Aeron.Context()
-                .aeronDirectoryName(mediaDriver.aeronDirectoryName())
-                .availableImageHandler { image -> println "Available image: ${image.sourceIdentity()}" }
-                .unavailableImageHandler { image -> println "Unavailable image: ${image.sourceIdentity()}" })
+        aeron = Aeron.connect(
+                new Aeron.Context()
+                        .aeronDirectoryName(mediaDriver.aeronDirectoryName())
+        )
 
-        // 添加关闭钩子
         addShutdownHook()
-
-        // 启动接收消息的actor
+        initWorker()
         startMessageReceiver()
+    }
+
+    private static void initWorker() {
+        // 使用独立 Actor 线程池处理消息
+        2.times {
+            workers << Actors.actor {
+                loop {
+                    react { WorkItem workItem ->
+                        try {
+                            Response res = Response.parseFrom(workItem.data)
+                            String chatId = res.getExec().getRequestInfo().getChatId()
+                            if (res.getCode() != 0) {
+                                throw new RuntimeException("chatId: ${chatId}, code:${res.getCode()} error: ${res.getMessage()}")
+                            }
+                            if (chats[chatId]) {
+                                chats[chatId].receiveMessage = res.getDataOrDefault("res", null)
+                            }
+                        } catch(Exception e) {
+                            e.printStackTrace()
+                        }
+                    }
+                }
+            }
+        }
     }
 
     private static void startMessageReceiver() {
         // 创建订阅
         clientSub = aeron.addSubscription(CLIENT_URL_PREFIX + instance.host + ":" + instance.port, instance.streamId)
 
-        // 启动actor处理接收到的消息
-        Actors.actor {
-            final IdleStrategy idle = new BackoffIdleStrategy()
-            final FragmentHandler handler = { buffer, offset, length, header ->
-                try {
-                    byte[] data = new byte[length]
-                    buffer.getBytes(offset, data)
-                    Response res = Response.parseFrom(data)
-                    String chatId = res.getExec().getRequestInfo().getChatId()
-                    if (chats[chatId]) {
-                        chats[chatId].receiveMessage = res.getDataOrDefault("res", null)
-                    }
-                } catch (Exception e) {
-                    println "Error processing message: ${e.message}"
-                    e.printStackTrace()
-                }
-            }
+        // 消息处理函数只负责 dispatch，不阻塞
+        final FragmentHandler messageHandler = { buffer, offset, length, header ->
+            byte[] data = new byte[length]
+            buffer.getBytes(offset, data)
+            int idx = Math.abs(rr.getAndIncrement() % workers.size())
+            workers[idx] << new WorkItem(data)
+        }
 
+        // FragmentAssembler 包装
+        final FragmentAssembler assembler = new FragmentAssembler(messageHandler)
+
+        // poll 线程单独运行
+        Thread.start {
+            final IdleStrategy idle = new BackoffIdleStrategy()
             while (running.get()) {
-                int fragments = clientSub.poll(handler, 10)
+                int fragments = clientSub.poll(assembler, 10)
                 idle.idle(fragments)
             }
         }
@@ -112,7 +145,6 @@ class Client {
     }
 
     void send(DataSourceInfo dataSourceInfo, Closure callback) {
-        // 构建 DataSourceInfo
         def chat = new Chat()
         chat.addPropertyChangeListener callback
         chats[chat.chatId] = chat
@@ -123,8 +155,6 @@ class Client {
             long result = serverPub.offer(outBuf, 0, out.length)
             if (result < 0) {
                 println "Failed to send message, result: $result"
-            } else {
-                println "Message sent successfully"
             }
         } catch (Exception e) {
             println "Error sending message: ${e.message}"
@@ -132,49 +162,14 @@ class Client {
         }
     }
 
-    static void main(String[] args) {
-        def client = null
-        try {
-            client = Client.getInstance("127.0.0.1", 38881, 2500, "127.0.0.1")
-
-            def dataSourceInfo = DataSourceInfo.newBuilder().setExec(
-                    ExecInfo.newBuilder().setRequestInfo(
-                            RequestInfo.newBuilder()
-                                    .setReplyChannel(CLIENT_URL_PREFIX + "127.0.0.1:38881")
-                                    .setReplyStream(2500)
-                                    .build()
-                    ).setMethod("registerDb").build()
-            ).setUrl("jdbc:mysql://192.168.111.244:63306/shujuzhiliang")
-                    .setType("com.mysql.cj.jdbc.Driver")
-                    .setUsername("root")
-                    .setPassword("skzz@2021")
-                    .setMaxPoolSize(10)
-                    .setMinPoolSize(1)
-                    .setIdleTimeout(60000)
-                    .setConnectionTimeout(30000)
-                    .build()
-
-            // 发送消息
-            client.send dataSourceInfo, { backInfo ->
-                println "Received response: ${backInfo}"
-            }
-
-            // 保持程序运行，等待用户输入后退出
-            println "程序运行中，按 Enter 键退出..."
-            System.in.read()
-        } catch (Exception e) {
-            e.printStackTrace()
-        } finally {
-            // 显式关闭资源
-            if (client != null) {
-                println "正在关闭资源..."
-                try { clientSub?.close() } catch (e) { e.printStackTrace() }
-                try { serverPub?.close() } catch (e) { e.printStackTrace() }
-                try { aeron?.close() } catch (e) { e.printStackTrace() }
-                try { mediaDriver?.close() } catch (e) { e.printStackTrace() }
-                running.set(false)
-                println "资源已关闭"
-            }
-        }
+    void close() {
+        println "正在关闭资源..."
+        running.set(false)
+        try { clientSub?.close() } catch (e) { e.printStackTrace() }
+        try { serverPub?.close() } catch (e) { e.printStackTrace() }
+        try { aeron?.close() } catch (e) { e.printStackTrace() }
+        try { mediaDriver?.close() } catch (e) { e.printStackTrace() }
+        println "资源已关闭"
     }
 }
+

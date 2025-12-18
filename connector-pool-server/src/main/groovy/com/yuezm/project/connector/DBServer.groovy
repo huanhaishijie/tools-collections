@@ -43,9 +43,11 @@ class DBServer {
             String link = "${info.getUrl()}:${info.getUsername()}:${info.getPassword()}"
             String md5 = link.bytes.md5()
             if (DATA_SOURCES[md5]) {
-                return Response.newBuilder().setCode(0).setMessage("OK").build()
+                return Response.newBuilder().putData("res", md5).setCode(0).setMessage("OK").build()
             }
             HikariDataSource ds = new HikariDataSource()
+            // 根据URL自动设置驱动类
+            ds.setDriverClassName(info.getType())
             ds.setJdbcUrl(info.getUrl())
             ds.setUsername(info.getUsername())
             ds.setPassword(info.getPassword())
@@ -55,7 +57,9 @@ class DBServer {
             if (info.getConnectionTimeout() > 0) ds.setConnectionTimeout(info.getConnectionTimeout())
             info.getOtherMap().forEach { k, v -> ds.addDataSourceProperty(k, v) }
             DATA_SOURCES[md5] = ds
-            def builder = Response.newBuilder().setCode(OK_CODE).setMessage(OK)
+            def builder = Response.newBuilder()
+            builder.putData("res", md5)
+            builder.setCode(OK_CODE).setMessage(OK)
             if (info.hasExec()) builder.setExec(info.getExec())
             return builder.build()
         } catch (Exception e) {
@@ -66,8 +70,16 @@ class DBServer {
     }
 
     Response removeDb(DataSourceInfo info){
-        String link = "${info.getUrl()}:${info.getUsername()}:${info.getPassword()}"
-        String md5 = link.bytes.md5()
+        String md5
+        info.getOtherMap().each { k, v ->
+            if (k == "key") {
+                md5 = v
+            }
+        }
+        if(!md5){
+            String link = "${info.getUrl()}:${info.getUsername()}:${info.getPassword()}"
+            md5 = link.bytes.md5()
+        }
         if (DATA_SOURCES[md5]) {
             def i = 0
             while (i < 5){
@@ -86,8 +98,17 @@ class DBServer {
     }
 
     Response execSql(DataSourceInfo info){
-        String link = "${info.getUrl()}:${info.getUsername()}:${info.getPassword()}"
-        String md5 = link.bytes.md5()
+        String md5
+        info.getOtherMap().each { k, v ->
+            if (k == "key") {
+                md5 = v
+            }
+        }
+        if(!md5){
+            String link = "${info.getUrl()}:${info.getUsername()}:${info.getPassword()}"
+            md5 = link.bytes.md5()
+        }
+
         if (!DATA_SOURCES[md5]) {
             return Response.newBuilder().setCode(ERR_CODE).setMessage("$ERR: no datasource, can't execute").build()
         }
@@ -156,15 +177,19 @@ class DBServer {
             builder.putData("res", JSON.toJson(res))
         }
 
-        return Response.newBuilder().setCode(OK_CODE).setMessage(OK).build()
+        return builder.build()
     }
 
 
     Response handle(byte[] bytes) {
         try {
             DataSourceInfo info = DataSourceInfo.parseFrom(bytes)
-            if (info.hasExec() && "registerDb".equals(info.getExec().getMethod())) {
+            if (info.hasExec() && "registerDb" == info.getExec().getMethod()) {
                 return registerDb(info)
+            } else if (info.hasExec() && "removeDb" == info.getExec().getMethod()) {
+                return removeDb(info)
+            } else if (info.hasExec() && "execSql" == info.getExec().getMethod()) {
+                return execSql(info)
             } else {
                 def builder = Response.newBuilder()
                 if (info.hasExec()) builder.setExec(info.getExec())
