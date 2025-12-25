@@ -419,7 +419,7 @@ wrk -t4 -c100 -d30s --latency -s test/benchmark.lua http://localhost:38880/
 
 ### 开发环境
 
-1. 安装 JDK 17 和 Gradle 8+
+1. 安装 JDK 21 和 Gradle 8.12
 2. 克隆代码: `git clone https://github.com/yourusername/connector-pool-server.git`
 3. 导入到 IDE (推荐 IntelliJ IDEA)
 4. 运行测试: `./gradlew test`
