@@ -1,8 +1,6 @@
 package com.yuezm.project.connector
 
 import com.yuezm.project.connector.proto.DataSourceInfo
-import com.yuezm.project.connector.proto.ExecInfo
-import com.yuezm.project.connector.proto.RequestInfo
 import com.yuezm.project.connector.proto.Response
 import groovyx.gpars.actor.Actors
 import io.aeron.Aeron
@@ -94,6 +92,7 @@ class Client {
                             }
                             if (chats[chatId]) {
                                 chats[chatId].receiveMessage = res.getDataOrDefault("res", null)
+                                chats.remove chatId
                             }
                         } catch(Exception e) {
                             e.printStackTrace()

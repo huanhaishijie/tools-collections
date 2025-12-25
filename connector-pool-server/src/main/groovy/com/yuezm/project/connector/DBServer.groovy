@@ -3,15 +3,15 @@ package com.yuezm.project.connector
 import com.yuezm.project.connector.proto.DataSourceInfo
 import com.yuezm.project.connector.proto.Response
 import com.zaxxer.hikari.HikariDataSource
+import groovy.json.JsonGenerator
+import groovy.json.JsonSlurper
 import groovy.sql.Sql
 import groovy.util.logging.Slf4j
 
 import javax.sql.DataSource
+import java.sql.Connection
+import java.sql.SQLException
 import java.util.concurrent.ConcurrentHashMap
-import groovy.json.JsonSlurper
-import groovy.json.JsonGenerator
-
-
 
 /**
  * Server
@@ -21,182 +21,295 @@ import groovy.json.JsonGenerator
  * @description ${TODO}
  * @date 2025/12/12 10:53
  */
+
 @Slf4j
 class DBServer {
 
-    private final static String ERR = "ERR: "
-    private final static String OK = "OK"
-    private final static String UNSUPPORTED_METHOD = "Unsupported method"
-    private final static String INVALID_MESSAGE = "Invalid message"
-    private final static int OK_CODE = 0
-    private final static int ERR_CODE = -1
-    private final static int UNSUPPORTED_METHOD_CODE = -2
-    private final static int INVALID_MESSAGE_CODE = -3
-    private static final JsonGenerator JSON = new JsonGenerator.Options().disableUnicodeEscaping().build()
+    /* ======================== 常量 ======================== */
 
-    private static final Map<String, HikariDataSource> DATA_SOURCES = new ConcurrentHashMap<>()
-    private static final Map<String, Sql> SQL_EXECUTORS = new ConcurrentHashMap<>()
+    private static final String OK = "OK"
+    private static final String ERR = "ERR"
+    private static final String UNSUPPORTED_METHOD = "Unsupported method"
+    private static final String INVALID_MESSAGE = "Invalid message"
+
+    private static final int OK_CODE = 0
+    private static final int ERR_CODE = -1
+    private static final int UNSUPPORTED_METHOD_CODE = -2
+    private static final int INVALID_MESSAGE_CODE = -3
+
+    private static final JsonGenerator JSON =
+            new JsonGenerator.Options().disableUnicodeEscaping().build()
 
 
-    Response registerDb(DataSourceInfo info){
+    /** 只缓存 DataSource（线程安全） */
+    private static final Map<String, HikariDataSource> DATA_SOURCES =
+            new ConcurrentHashMap<>()
+
+
+    private static String calcKey(DataSourceInfo info) {
+        String link = "${info.getUrl()}:${info.getUsername()}:${info.getPassword()}"
+        return link.bytes.md5()
+    }
+
+    protected static void  shutdown(){
+        DATA_SOURCES.values().each { try {
+            it.close()
+        } catch (Exception e) {
+            log.warn("close datasource error", e)
+        } }
+    }
+
+    private static <T> T withSql(String key, Closure<T> action) {
+        HikariDataSource ds = DATA_SOURCES[key]
+        if (!ds) {
+            throw new IllegalStateException("no datasource for key=$key")
+        }
+
+        Sql sql = null
         try {
-            String link = "${info.getUrl()}:${info.getUsername()}:${info.getPassword()}"
-            String md5 = link.bytes.md5()
-            if (DATA_SOURCES[md5]) {
-                return Response.newBuilder().putData("res", md5).setCode(0).setMessage("OK").build()
+            sql = new Sql(ds as DataSource)
+            return action(sql)
+        } finally {
+            if (sql != null) {
+                try {
+                    sql.close()
+                } catch (ignored) {}
             }
-            HikariDataSource ds = new HikariDataSource()
-            // 根据URL自动设置驱动类
+        }
+    }
+
+    private static Object parseParams(String paramsStr) {
+        if (!paramsStr) return null
+        try {
+            return new JsonSlurper().parseText(paramsStr)
+        } catch (Exception e) {
+            return paramsStr
+        }
+    }
+
+
+    Response registerDb(DataSourceInfo info) {
+        String key = calcKey(info)
+        HikariDataSource ds = null
+
+        try {
+            if (DATA_SOURCES.containsKey(key)) {
+                return Response.newBuilder()
+                        .setCode(OK_CODE)
+                        .setMessage(OK)
+                        .putData("res", key)
+                        .build()
+            }
+
+            ds = new HikariDataSource()
             ds.setDriverClassName(info.getType())
             ds.setJdbcUrl(info.getUrl())
             ds.setUsername(info.getUsername())
             ds.setPassword(info.getPassword())
+
             if (info.getMaxPoolSize() > 0) ds.setMaximumPoolSize(info.getMaxPoolSize())
             if (info.getMinPoolSize() > 0) ds.setMinimumIdle(info.getMinPoolSize())
             if (info.getIdleTimeout() > 0) ds.setIdleTimeout(info.getIdleTimeout())
             if (info.getConnectionTimeout() > 0) ds.setConnectionTimeout(info.getConnectionTimeout())
-            info.getOtherMap().forEach { k, v -> ds.addDataSourceProperty(k, v) }
-            DATA_SOURCES[md5] = ds
-            def builder = Response.newBuilder()
-            builder.putData("res", md5)
-            builder.setCode(OK_CODE).setMessage(OK)
-            if (info.hasExec()) builder.setExec(info.getExec())
-            return builder.build()
+
+            // 连接池稳定性配置
+            ds.setLeakDetectionThreshold(60_000)
+            ds.setValidationTimeout(5_000)
+            ds.setMaxLifetime(30 * 60 * 1000)
+
+            info.getOtherMap().forEach { k, v ->
+                ds.addDataSourceProperty(k, v)
+            }
+
+            // ====== 关键：可用性校验 ======
+            verifyDataSource(ds)
+
+            DATA_SOURCES[key] = ds
+
+            return Response.newBuilder()
+                    .setCode(OK_CODE)
+                    .setMessage(OK)
+                    .putData("res", key)
+                    .build()
+
         } catch (Exception e) {
-            def builder = Response.newBuilder().setCode(ERR_CODE).setMessage("$ERR: ${e.message}")
-            if (info.hasExec()) builder.setExec(info.getExec())
-            return builder.build()
+            if (ds != null) {
+                try {
+                    ds.close()
+                } catch (ignored) {}
+            }
+
+            return Response.newBuilder()
+                    .setCode(ERR_CODE)
+                    .setMessage("$ERR: ${e.message}")
+                    .build()
         }
     }
 
-    Response removeDb(DataSourceInfo info){
-        String md5
-        info.getOtherMap().each { k, v ->
-            if (k == "key") {
-                md5 = v
+    private static void verifyDataSource(HikariDataSource ds) {
+        Connection conn = null
+        try {
+            conn = ds.getConnection()
+
+            // JDBC 标准校验（推荐）
+            if (!conn.isValid(3)) {
+                throw new SQLException("Connection validation failed")
+            }
+
+        } finally {
+            if (conn != null) {
+                conn.close()
             }
         }
-        if(!md5){
-            String link = "${info.getUrl()}:${info.getUsername()}:${info.getPassword()}"
-            md5 = link.bytes.md5()
-        }
-        if (DATA_SOURCES[md5]) {
-            def i = 0
-            while (i < 5){
-                Thread.sleep(100)
-                DATA_SOURCES[md5].close()
-                if (!DATA_SOURCES[md5].closed){
-                    break
-                }
-                i++
-            }
-            DATA_SOURCES.remove(md5)
-            SQL_EXECUTORS.remove(md5)
-            return Response.newBuilder().setCode(OK_CODE).setMessage(OK).build()
-        }
-        return Response.newBuilder().setCode(OK_CODE).setMessage(OK).build()
     }
 
-    Response execSql(DataSourceInfo info){
-        String md5
-        info.getOtherMap().each { k, v ->
-            if (k == "key") {
-                md5 = v
-            }
-        }
-        if(!md5){
-            String link = "${info.getUrl()}:${info.getUsername()}:${info.getPassword()}"
-            md5 = link.bytes.md5()
+    Response removeDb(DataSourceInfo info) {
+        String key = info.getOtherOrDefault("key", "")
+        if (!key) {
+            key = calcKey(info)
         }
 
-        if (!DATA_SOURCES[md5]) {
-            return Response.newBuilder().setCode(ERR_CODE).setMessage("$ERR: no datasource, can't execute").build()
-        }
-        Sql sql = SQL_EXECUTORS[md5]
-        if (!sql) {
-            sql = new Sql(DATA_SOURCES[md5] as DataSource)
-            SQL_EXECUTORS[md5] = sql
-        }
-        def sqlStr = info.getOtherOrDefault("sql", "")
-        if(!sqlStr){
-            return Response.newBuilder().setCode(ERR_CODE).setMessage("$ERR: no sql").build()
-        }
-        def params = info.getOtherOrDefault("params", "")
-        def exec = info.getOtherOrDefault("exec", "")
-        def execPlus = info.getOtherOrDefault("execPlus", "")
-        def execCode = info.getOtherOrDefault("execCode", "")
-        if(execPlus){
-            if(!execCode){
-                return Response.newBuilder().setCode(ERR_CODE).setMessage("$ERR: no execCode").build()
-            }
-            def code = new GroovyShell().evaluate(execCode)
-            if(code instanceof Closure){
-                def cl = code as Closure
-                cl.setResolveStrategy(Closure.DELEGATE_FIRST)
-                cl.setDelegate(sql)
-                cl.call()
-            }
-        }
-        if(!exec){
-            return Response.newBuilder().setCode(ERR_CODE).setMessage("$ERR: no exec").build()
-        }
-        def conditionVal = null
-        if(params){
+        HikariDataSource ds = DATA_SOURCES.remove(key)
+        if (ds) {
             try {
-                conditionVal = new JsonSlurper().parseText(params)
-            }catch (Exception e){
-                log.info("params is not json")
+                ds.close()
+            } catch (Exception e) {
+                log.warn("close datasource error", e)
             }
-        }
-        def res = null
-        if(conditionVal instanceof Map){
-            res = switch (exec){
-                case "rows" -> sql.rows(conditionVal as Map, sqlStr)
-                case "execute" -> sql.execute(conditionVal as Map, sqlStr)
-            }
-        }else if (conditionVal instanceof List){
-            res = switch (exec){
-                case "rows" -> sql.rows(sqlStr, conditionVal as List)
-                case "execute" -> sql.execute(sqlStr, conditionVal as List)
-            }
-        }else {
-            if(conditionVal){
-                res = switch (exec){
-                    case "rows" -> sql.rows(sqlStr, conditionVal)
-                    case "execute" -> sql.execute(sqlStr, conditionVal)
-                }
-            }else {
-                res = switch (exec){
-                    case "rows" -> sql.rows(sqlStr)
-                    case "execute" -> sql.execute(sqlStr)
-                }
-            }
-        }
-        def builder = Response.newBuilder().setCode(OK_CODE).setMessage(OK)
-        if(res){
-            builder.putData("res", JSON.toJson(res))
         }
 
-        return builder.build()
+        return Response.newBuilder()
+                .setCode(OK_CODE)
+                .setMessage(OK)
+                .build()
     }
 
+    Response execSql(DataSourceInfo info) {
+        String key = info.getOtherOrDefault("key", "")
+        if (!key) {
+            key = calcKey(info)
+        }
+
+        if (!DATA_SOURCES.containsKey(key)) {
+            return Response.newBuilder()
+                    .setCode(ERR_CODE)
+                    .setMessage("$ERR: no datasource")
+                    .build()
+        }
+
+        String sqlStr   = info.getOtherOrDefault("sql", "")
+        String exec     = info.getOtherOrDefault("exec", "")
+        String execPlus = info.getOtherOrDefault("execPlus", "")
+        String execCode = info.getOtherOrDefault("execCode", "")
+        Object params   = parseParams(info.getOtherOrDefault("params", ""))
+
+        try {
+            // ===== execPlus：直接返回 Response =====
+            if (execPlus) {
+                return withSql(key) { Sql sql ->
+                    execPlusInternal(sql, sqlStr, execCode, params)
+                }
+            }
+
+            // ===== 普通 SQL 执行 =====
+            Object result = withSql(key) { Sql sql ->
+                if (params instanceof Map) {
+                    switch (exec) {
+                        case "rows":     return sql.rows(params, sqlStr)
+                        case "execute":  return sql.execute(params, sqlStr)
+                        case "firstRow": return sql.firstRow(params, sqlStr)
+                    }
+                } else if (params instanceof List) {
+                    switch (exec) {
+                        case "rows":     return sql.rows(sqlStr, params)
+                        case "execute":  return sql.execute(sqlStr, params)
+                        case "firstRow": return sql.firstRow(sqlStr, params)
+                    }
+                } else {
+                    switch (exec) {
+                        case "rows":     return sql.rows(sqlStr)
+                        case "execute":  return sql.execute(sqlStr)
+                        case "firstRow": return sql.firstRow(sqlStr)
+                    }
+                }
+                return null
+            }
+
+            def builder = Response.newBuilder()
+                    .setCode(OK_CODE)
+                    .setMessage(OK)
+
+            if (result != null) {
+                builder.putData("res", JSON.toJson(result))
+            }
+
+            return builder.build()
+
+        } catch (Exception e) {
+            e.printStackTrace()
+            return Response.newBuilder()
+                    .setCode(ERR_CODE)
+                    .setMessage("$ERR: ${e.message}")
+                    .build()
+        }
+    }
+
+    private static Response execPlusInternal(
+            Sql sql, String sqlStr, String execCode, Object params) {
+
+        try {
+            Binding binding = new Binding()
+            binding.setVariable("sqlHandler", sql)
+            binding.setVariable("sqlStr", sqlStr)
+            binding.setVariable("JSON", JSON)
+            binding.setVariable("log", log)
+
+            if (params instanceof Map) {
+                binding.variables.putAll(params as Map)
+            } else if (params instanceof List) {
+                binding.setVariable("args", params)
+            } else if (params != null) {
+                binding.setVariable("args", [params])
+            }
+
+            def shell = new GroovyShell(binding)
+            def closure = shell.evaluate(execCode)
+            def result = closure()
+
+            def builder = Response.newBuilder()
+                    .setCode(OK_CODE)
+                    .setMessage(OK)
+
+            if (result != null) {
+                builder.putData("res", JSON.toJson(result))
+            }
+
+            return builder.build()
+
+        } catch (Exception e) {
+            log.error("execPlusInternal error", e)
+            return Response.newBuilder()
+                    .setCode(ERR_CODE)
+                    .setMessage("$ERR: ${e.message}")
+                    .build()
+        }
+    }
 
     Response handle(byte[] bytes) {
         try {
             DataSourceInfo info = DataSourceInfo.parseFrom(bytes)
-            if (info.hasExec() && "registerDb" == info.getExec().getMethod()) {
-                return registerDb(info)
-            } else if (info.hasExec() && "removeDb" == info.getExec().getMethod()) {
-                return removeDb(info)
-            } else if (info.hasExec() && "execSql" == info.getExec().getMethod()) {
-                return execSql(info)
-            } else {
-                def builder = Response.newBuilder()
-                if (info.hasExec()) builder.setExec(info.getExec())
-                return builder.setCode(UNSUPPORTED_METHOD_CODE)
+            String method = info.hasExec() ? info.getExec().getMethod() : ""
+
+            return switch (method) {
+                case "registerDb" -> registerDb(info)
+                case "removeDb" -> removeDb(info)
+                case "execSql" -> execSql(info)
+                default -> Response.newBuilder()
+                        .setCode(UNSUPPORTED_METHOD_CODE)
                         .setMessage(UNSUPPORTED_METHOD)
                         .build()
             }
+
         } catch (Exception e) {
             return Response.newBuilder()
                     .setCode(INVALID_MESSAGE_CODE)
@@ -204,7 +317,6 @@ class DBServer {
                     .build()
         }
     }
-
-
-
 }
+
+

@@ -84,6 +84,18 @@
             <artifactId>neo4j-java-driver</artifactId>
             <version>4.4.2</version>
         </dependency>
+        <dependency>
+            <groupId>com.yuezm.project.connector</groupId>
+            <artifactId>connector-pool-client</artifactId>
+            <version>1.0.0</version>
+        </dependency>
+        <dependency>
+            <groupId>com.google.protobuf</groupId>
+            <artifactId>protobuf-java</artifactId>
+            <version>3.24.4</version>
+        </dependency>
+
+
     </dependencies>
 
     <build>

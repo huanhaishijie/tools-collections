@@ -4,8 +4,6 @@ import groovy.sql.Sql
 
 import java.sql.Connection
 import java.util.function.BiFunction
-import java.util.function.Function
-
 
 /**
  * SqlHandler
@@ -34,10 +32,11 @@ abstract class SqlHandler {
         this.connection = connection
         sql = new Sql(connection)
     }
-    SqlHandler(Map<String, String> config){
-        this.connection = HikariConnectionManager.getConnection(config)
-        sql = new Sql(connection)
+
+    SqlHandler(DatasourceProperties datasourceProperties, Map<String, Object> otherPoolConfig = [:]) {
+
     }
+
 
 
     protected SqlHandler() {

@@ -93,27 +93,40 @@ class SqlTemplateEngine {
 //</foreach>
 //"""
     static void main(String[] args) {
-    String sqlScript = """# !groovy
-    def sql = "select * from tablexx where 1=1"
-    def index = 0
-    def res = [:]
-    def listParams = [:]
-    if(list){
-      sql += " and id in (" +list.collect {
-        listParams["id_\${index}"] = it
-        ":id_\${index++}"
+//    String sqlScript = """# !groovy
+//    def sql = "select * from tablexx where 1=1"
+//    def index = 0
+//    def res = [:]
+//    def listParams = [:]
+//    if(list){
+//      sql += " and id in (" +list.collect {
+//        listParams["id_\${index}"] = it
+//        ":id_\${index++}"
+//
+//      }.join(",") +")"
+//    }
+//    if(minAge){
+//        sql += " and age >= #{minAge}"
+//    }
+//    res.sql= sql
+//    res.params = listParams
+//    res
+//"""
 
-      }.join(",") +")"
-    }
-    if(minAge){
-        sql += " and age >= #{minAge}"
-    }
-    res.sql= sql
-    res.params = listParams
-    res
+
+            def cc = """
+# !xml
+select * from table where 1=1
+<if test="minAge != null && minAge !='' ">
+    AND age >= #{minAge}
+</if>
+and cc1 in
+<foreach collection="list" item="item" open="(" separator="," close=")">
+    #{item}
+</foreach>
 """
         def params = [minAge:25, list:[2,3,4]]
-        def sql = SqlTemplateEngine.parse(sqlScript, params )
+        def sql = SqlTemplateEngine.parse(cc, params)
         println sql
 
     }

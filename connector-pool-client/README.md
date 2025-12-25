@@ -1,94 +1,135 @@
 # Connector Pool Client
 
-## 项目概述
-- 基于 Aeron 的高性能数据库连接池客户端
-- 支持异步消息通信
-- 使用 Protocol Buffers 进行数据序列化
+## 项目简介
+
+基于 Aeron 的高性能数据库连接池客户端，使用 Protocol Buffers 进行高效消息序列化，支持异步消息通信。
 
 ## 功能特性
-- 数据库连接池管理
-- 异步消息通信
-- 支持多种数据库类型
-- 可配置的连接池参数
+
+- 🚀 基于 Aeron 的高性能消息通信
+- 🔄 异步非阻塞 I/O 操作
+- 🛡️ 线程安全的客户端实现
+- 📦 支持多种数据库操作
+- ⚡ 可配置的连接池参数
+- 📡 支持远程数据库连接管理
 
 ## 快速开始
 
 ### 环境要求
-- JDK 1.8 或更高版本
-- Gradle 构建工具
+
+- JDK 1.8+
+- Gradle 8.0+
 - Aeron 消息系统
 
 ### 安装
+
 ```bash
-git clone [项目仓库地址]
+git clone https://github.com/yourusername/connector-pool-client.git
 cd connector-pool-client
+```
+
+### 构建项目
+
+```bash
 gradle build
 ```
 
-### 基本使用
-1. 初始化客户端
-2. 配置数据源
-3. 发送请求
-4. 处理响应
+## 使用示例
 
-## 配置说明
-### 数据源配置
-- URL: 数据库连接地址
-- 用户名/密码
-- 连接池参数
-  - 最大连接数
-  - 最小连接数
-  - 空闲超时
-  - 连接超时
+### 1. 初始化客户端
 
-## API 参考
-### 核心类
-- `Client`: 主客户端类
-- `Chat`: 消息处理类
-- `DataSourceInfo`: 数据源信息类
-
-### 主要方法
-- `Client.getInstance()`: 获取客户端实例
-- `send()`: 发送请求
-- 事件监听器
-
-## 示例代码
 ```groovy
-// 示例代码展示如何初始化和使用客户端
 def client = Client.getInstance("127.0.0.1", 38881, 2500, "127.0.0.1")
-// ... 配置数据源
+```
+
+### 2. 执行SQL查询
+
+```groovy
+def dataSourceInfo = DataSourceInfo.newBuilder().setExec(
+    ExecInfo.newBuilder().setRequestInfo(
+        RequestInfo.newBuilder()
+            .setReplyChannel("aeron:udp?endpoint=127.0.0.1:38881")
+            .setReplyStream(2500)
+            .build()
+    ).setMethod("execSql").build()
+).putOther("key", "your-db-key")
+ .putOther("exec", "rows")
+ .putOther("sql", "SELECT * FROM your_table")
+ .build()
+
 client.send(dataSourceInfo) { response ->
-    // 处理响应
+    println "查询结果: ${response}"
 }
 ```
 
-## 协议说明
-### 消息格式
-- RequestInfo
-- ExecInfo
-- Response
-- DataSourceInfo
+### 3. 注册数据库连接
+
+```groovy
+def registerInfo = DataSourceInfo.newBuilder().setExec(
+    ExecInfo.newBuilder().setRequestInfo(
+        RequestInfo.newBuilder()
+            .setReplyChannel("aeron:udp?endpoint=127.0.0.1:38881")
+            .setReplyStream(2500)
+            .build()
+    ).setMethod("register").build()
+).putOther("key", "your-db-key")
+ .putOther("url", "jdbc:mysql://localhost:3306/your_database")
+ .putOther("username", "db_user")
+ .putOther("password", "db_password")
+ .putOther("driverClassName", "com.mysql.cj.jdbc.Driver")
+ .build()
+
+client.send(registerInfo) { response ->
+    println "数据库注册结果: ${response}"
+}
+```
+## API 参考
+
+### Client 类
+
+#### 方法
+
+- `static Client getInstance(String host, int port, int streamId, String serverHost, String model = "local", String shell = "")`
+  获取客户端实例（单例模式）
+  
+- `void send(DataSourceInfo dataSourceInfo, Closure callback)`
+  发送请求到服务器
+  
+- `void close()`
+  关闭客户端，释放资源
+
+## 配置说明
+
+### 客户端配置参数
+
+| 参数名 | 类型 | 默认值 | 描述 |
+|--------|------|--------|------|
+| host | String | "127.0.0.1" | 客户端主机地址 |
+| port | int | 38881 | 客户端端口 |
+| streamId | int | 2500 | 流ID |
+| serverHost | String | "127.0.0.1" | 服务器主机地址 |
+| model | String | "local" | 运行模式 |
+| shell | String | "" | 命令行参数 |
 
 ## 开发指南
+
 ### 构建项目
-```bash
-gradle build
-```
 
-### 运行测试
 ```bash
+# 编译项目
+gradle compileGroovy
+
+# 运行测试
 gradle test
-```
 
-## 贡献指南
-1. Fork 项目
-2. 创建特性分支
-3. 提交更改
-4. 创建 Pull Request
+# 构建JAR包
+gradle jar
+```
 
 ## 许可证
-[许可证类型]
 
-## 联系方式
-- 项目维护者
-- 问题跟踪
+MIT
+
+## 贡献
+
+欢迎提交 Issue 和 Pull Request

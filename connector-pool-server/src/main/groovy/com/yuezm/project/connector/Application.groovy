@@ -205,7 +205,7 @@ class Application {
                 if (mediaDriver) {
                     mediaDriver.close()
                 }
-
+                DBServer.shutdown()
                 println "Server shutdown complete."
             } catch (Exception e) {
                 println "Error during shutdown: ${e.message}"
