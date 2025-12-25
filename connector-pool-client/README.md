@@ -42,27 +42,7 @@ gradle build
 def client = Client.getInstance("127.0.0.1", 38881, 2500, "127.0.0.1")
 ```
 
-### 2. 执行SQL查询
-
-```groovy
-def dataSourceInfo = DataSourceInfo.newBuilder().setExec(
-    ExecInfo.newBuilder().setRequestInfo(
-        RequestInfo.newBuilder()
-            .setReplyChannel("aeron:udp?endpoint=127.0.0.1:38881")
-            .setReplyStream(2500)
-            .build()
-    ).setMethod("execSql").build()
-).putOther("key", "your-db-key")
- .putOther("exec", "rows")
- .putOther("sql", "SELECT * FROM your_table")
- .build()
-
-client.send(dataSourceInfo) { response ->
-    println "查询结果: ${response}"
-}
-```
-
-### 3. 注册数据库连接
+### 2. 注册数据库连接
 
 ```groovy
 def registerInfo = DataSourceInfo.newBuilder().setExec(
@@ -83,6 +63,29 @@ client.send(registerInfo) { response ->
     println "数据库注册结果: ${response}"
 }
 ```
+
+### 3. 执行SQL查询
+
+```groovy
+def dataSourceInfo = DataSourceInfo.newBuilder().setExec(
+    ExecInfo.newBuilder().setRequestInfo(
+        RequestInfo.newBuilder()
+            .setReplyChannel("aeron:udp?endpoint=127.0.0.1:38881")
+            .setReplyStream(2500)
+            .build()
+    ).setMethod("execSql").build()
+).putOther("key", "your-db-key")
+ .putOther("exec", "rows")
+ .putOther("sql", "SELECT * FROM your_table")
+ .build()
+
+client.send(dataSourceInfo) { response ->
+    println "查询结果: ${response}"
+}
+```
+### 4. 更多信息观看
+[README.md](../field-filter/src/main/groovy/com/yuezm/project/sql/README.md)
+
 ## API 参考
 
 ### Client 类
