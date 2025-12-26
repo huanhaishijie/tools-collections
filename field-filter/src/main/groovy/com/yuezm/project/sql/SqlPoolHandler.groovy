@@ -108,7 +108,7 @@ abstract class SqlPoolHandler extends SqlHandler{
         }
     }
 
-    @Override
+    
     GroovyRowResult firstRow(String sql) {
         def dataSourceInfo = DataSourceInfo.newBuilder().setExec(
                 //服务端回信通道
@@ -124,12 +124,12 @@ abstract class SqlPoolHandler extends SqlHandler{
         return new GroovyRowResult(map)
     }
 
-    @Override
+    
     GroovyRowResult firstRow(GString gstring) {
         return firstRow(gstring.toString())
     }
 
-    @Override
+    
     GroovyRowResult firstRow(String sql, List<Object> params) {
         def dataSourceInfo = DataSourceInfo.newBuilder().setExec(
                 ExecInfo.newBuilder().setRequestInfo(
@@ -147,7 +147,7 @@ abstract class SqlPoolHandler extends SqlHandler{
         return new GroovyRowResult(map)
     }
 
-    @Override
+    
     GroovyRowResult firstRow(Map params, String sql) {
         def dataSourceInfo = DataSourceInfo.newBuilder().setExec(
                 ExecInfo.newBuilder().setRequestInfo(
@@ -165,7 +165,7 @@ abstract class SqlPoolHandler extends SqlHandler{
         return new GroovyRowResult(map)
     }
 
-    @Override
+    
     GroovyRowResult firstRow(String sql, Object[] params) {
         def dataSourceInfo = DataSourceInfo.newBuilder().setExec(
                 ExecInfo.newBuilder().setRequestInfo(
@@ -217,7 +217,7 @@ abstract class SqlPoolHandler extends SqlHandler{
 
     }
 
-    @Override
+    
     boolean execute(String sql) {
         def dataSourceInfo = DataSourceInfo.newBuilder().setExec(
                 ExecInfo.newBuilder().setRequestInfo(
@@ -233,7 +233,7 @@ abstract class SqlPoolHandler extends SqlHandler{
         return Boolean.valueOf(res)
     }
 
-    @Override
+    
     @Deprecated
     void execute(String sql, Closure processResults) {
         throw new UnsupportedOperationException("pool execute not support Closure")
@@ -254,7 +254,7 @@ abstract class SqlPoolHandler extends SqlHandler{
         sqlExec2(dataSourceInfo)
     }
 
-    @Override
+    
     boolean execute(String sql, List<Object> params) {
         def dataSourceInfo = DataSourceInfo.newBuilder().setExec(
                 ExecInfo.newBuilder().setRequestInfo(
@@ -271,7 +271,7 @@ abstract class SqlPoolHandler extends SqlHandler{
         return Boolean.valueOf(res)
     }
 
-    @Override
+    
     @Deprecated
     void execute(String sql, List<Object> params, Closure processResults) {
         throw new UnsupportedOperationException("pool execute not support Closure")
@@ -293,7 +293,7 @@ abstract class SqlPoolHandler extends SqlHandler{
         sqlExec2(dataSourceInfo)
     }
 
-    @Override
+    
     boolean execute(Map params, String sql) {
         def dataSourceInfo = DataSourceInfo.newBuilder().setExec(
                 ExecInfo.newBuilder().setRequestInfo(
@@ -310,7 +310,7 @@ abstract class SqlPoolHandler extends SqlHandler{
         return Boolean.valueOf(res)
     }
 
-    @Override
+    
     @Deprecated
     void execute(Map params, String sql, Closure processResults) {
         throw new UnsupportedOperationException("pool execute not support Closure")
@@ -332,7 +332,7 @@ abstract class SqlPoolHandler extends SqlHandler{
         sqlExec2(dataSourceInfo)
     }
 
-    @Override
+    
     boolean execute(String sql, Object[] params) {
         def dataSourceInfo = DataSourceInfo.newBuilder().setExec(
                 ExecInfo.newBuilder().setRequestInfo(
@@ -349,7 +349,7 @@ abstract class SqlPoolHandler extends SqlHandler{
         return Boolean.valueOf(res)
     }
 
-    @Override
+    
     @Deprecated
     void execute(String sql, Object[] params, Closure processResults) {
         throw new UnsupportedOperationException("pool execute not support Closure")
@@ -371,12 +371,12 @@ abstract class SqlPoolHandler extends SqlHandler{
         sqlExec2(dataSourceInfo)
     }
 
-    @Override
+    
     boolean execute(GString gstring) {
         return execute(gstring.toString())
     }
 
-    @Override
+    
     @Deprecated
     void execute(GString gstring, Closure processResults) {
         throw new UnsupportedOperationException("pool execute not support Closure")
@@ -386,7 +386,7 @@ abstract class SqlPoolHandler extends SqlHandler{
         execute(gstring.toString(), execCode)
     }
 
-    @Override
+    
     List<GroovyRowResult> rows(String sql) {
         def dataSourceInfo = DataSourceInfo.newBuilder().setExec(
                 ExecInfo.newBuilder().setRequestInfo(
@@ -404,13 +404,13 @@ abstract class SqlPoolHandler extends SqlHandler{
         return list?.collect { new GroovyRowResult(it) }
     }
 
-    @Override
+    
     @Deprecated
     List<GroovyRowResult> rows(String sql, int offset, int maxRows) {
         throw new UnsupportedOperationException("pool rows not support offset and maxRows")
     }
 
-    @Override
+    
     @Deprecated
     List<GroovyRowResult> rows(String sql, Closure metaClosure) {
         throw new UnsupportedOperationException("pool rows not support Closure")
@@ -437,13 +437,13 @@ abstract class SqlPoolHandler extends SqlHandler{
 
 
 
-    @Override
+    
     @Deprecated
     List<GroovyRowResult> rows(String sql, int offset, int maxRows, Closure metaClosure) {
         throw new UnsupportedOperationException("pool rows not support offset and maxRows")
     }
 
-    @Override
+    
     List<GroovyRowResult> rows(String sql, List<Object> params) {
         def dataSourceInfo = DataSourceInfo.newBuilder().setExec(
                 ExecInfo.newBuilder().setRequestInfo(
@@ -462,7 +462,7 @@ abstract class SqlPoolHandler extends SqlHandler{
         return list?.collect { new GroovyRowResult(it) }
     }
 
-    @Override
+    
     List<GroovyRowResult> rows(Map params, String sql) {
         def dataSourceInfo = DataSourceInfo.newBuilder().setExec(
                 ExecInfo.newBuilder().setRequestInfo(
@@ -481,25 +481,25 @@ abstract class SqlPoolHandler extends SqlHandler{
         return list?.collect { new GroovyRowResult(it) }
     }
 
-    @Override
+    
     @Deprecated
     List<GroovyRowResult> rows(String sql, List<Object> params, int offset, int maxRows) {
         throw new UnsupportedOperationException("pool rows not support offset and maxRows")
     }
 
-    @Override
+    
     @Deprecated
     List<GroovyRowResult> rows(String sql, Map params, int offset, int maxRows) {
         throw new UnsupportedOperationException("pool rows not support offset and maxRows")
     }
 
-    @Override
+    
     @Deprecated
     List<GroovyRowResult> rows(Map params, String sql, int offset, int maxRows) {
         throw new UnsupportedOperationException("pool rows not support offset and maxRows")
     }
 
-    @Override
+    
     List<GroovyRowResult> rows(String sql, Object[] params) {
         def dataSourceInfo = DataSourceInfo.newBuilder().setExec(
                 ExecInfo.newBuilder().setRequestInfo(
@@ -518,13 +518,13 @@ abstract class SqlPoolHandler extends SqlHandler{
         return list?.collect { new GroovyRowResult(it) }
     }
 
-    @Override
+    
     @Deprecated
     List<GroovyRowResult> rows(String sql, Object[] params, int offset, int maxRows) {
         throw new UnsupportedOperationException("pool rows not support offset and maxRows")
     }
 
-    @Override
+    
     @Deprecated
     List<GroovyRowResult> rows(String sql, List<Object> params, Closure metaClosure) {
         throw new UnknownFormatFlagsException("metaClosure")
@@ -548,7 +548,7 @@ abstract class SqlPoolHandler extends SqlHandler{
         return list?.collect { new GroovyRowResult(it) }
     }
 
-    @Override
+    
     @Deprecated
     List<GroovyRowResult> rows(String sql, Map params, Closure metaClosure) {
         throw new UnsupportedOperationException("pool rows not support Closure")
@@ -572,7 +572,7 @@ abstract class SqlPoolHandler extends SqlHandler{
         return list?.collect { new GroovyRowResult(it) }
     }
 
-    @Override
+    
     @Deprecated
     List<GroovyRowResult> rows(Map params, String sql, Closure metaClosure) {
         throw new UnsupportedOperationException("pool rows not support Closure")
@@ -596,36 +596,36 @@ abstract class SqlPoolHandler extends SqlHandler{
         return list?.collect { new GroovyRowResult(it) }
     }
 
-    @Override
+    
     @Deprecated
     List<GroovyRowResult> rows(String sql, List<Object> params, int offset, int maxRows, Closure metaClosure) {
         throw new UnsupportedOperationException("pool rows not support Closure")
     }
 
-    @Override
+    
     @Deprecated
     List<GroovyRowResult> rows(String sql, Map params, int offset, int maxRows, Closure metaClosure) {
         throw new UnsupportedOperationException("pool rows not support Closure")
     }
 
-    @Override
+    
     @Deprecated
     List<GroovyRowResult> rows(Map params, String sql, int offset, int maxRows, Closure metaClosure) {
         throw new UnsupportedOperationException("pool rows not support Closure")
     }
 
-    @Override
+    
     @Deprecated
     List<GroovyRowResult> rows(GString sql, int offset, int maxRows) {
         throw new UnsupportedOperationException("pool rows not support Closure")
     }
 
-    @Override
+    
     List<GroovyRowResult> rows(GString gstring) {
         return rows(gstring.toString())
     }
 
-    @Override
+    
     @Deprecated
     List<GroovyRowResult> rows(GString gstring, Closure metaClosure) {
         throw new UnsupportedOperationException("pool rows not support Closure")
@@ -635,13 +635,13 @@ abstract class SqlPoolHandler extends SqlHandler{
         return rows(gstring.toString(), execCode)
     }
 
-    @Override
+    
     @Deprecated
     List<GroovyRowResult> rows(GString gstring, int offset, int maxRows, Closure metaClosure) {
         throw new UnsupportedOperationException("pool rows not support Closure")
     }
 
-    @Override
+    
     @Deprecated
     void query(String sql, Closure closure) {
         throw new UnsupportedOperationException("pool rows not support Closure")
@@ -670,7 +670,7 @@ abstract class SqlPoolHandler extends SqlHandler{
     }
 
 
-    @Override
+    
     @Deprecated
     void query(String sql, List<Object> params, Closure closure) {
         throw new UnsupportedOperationException("pool rows not support Closure")
@@ -698,7 +698,7 @@ abstract class SqlPoolHandler extends SqlHandler{
         }
     }
 
-    @Override
+    
     @Deprecated
     void query(String sql, Map map, Closure closure) {
         throw new UnsupportedOperationException("pool rows not support Closure")
@@ -727,7 +727,7 @@ abstract class SqlPoolHandler extends SqlHandler{
         }
     }
 
-    @Override
+    
     @Deprecated
     void query(Map map, String sql, Closure closure) {
         throw new UnsupportedOperationException("pool rows not support Closure")
@@ -756,7 +756,7 @@ abstract class SqlPoolHandler extends SqlHandler{
     }
 
 
-    @Override
+    
     @Deprecated
     void query(GString gstring, Closure closure) {
         throw new UnsupportedOperationException("pool rows not support Closure")
