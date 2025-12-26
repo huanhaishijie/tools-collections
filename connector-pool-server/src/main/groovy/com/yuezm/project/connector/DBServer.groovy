@@ -273,8 +273,9 @@ class DBServer {
             }
 
             def shell = new GroovyShell(binding)
-            def closure = shell.evaluate(execCode)
-            def result = closure()
+            println "execCode: $execCode"
+            def result = shell.evaluate(execCode)
+
 
             def builder = Response.newBuilder()
                     .setCode(OK_CODE)
@@ -287,6 +288,7 @@ class DBServer {
             return builder.build()
 
         } catch (Exception e) {
+            e.printStackTrace()
             log.error("execPlusInternal error", e)
             return Response.newBuilder()
                     .setCode(ERR_CODE)
