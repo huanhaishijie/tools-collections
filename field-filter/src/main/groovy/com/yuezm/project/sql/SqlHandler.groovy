@@ -116,7 +116,13 @@ abstract class SqlHandler {
     abstract TableInfo getTableInfo(String tableName, String schema = null)
 
 
+    <R> R expExec(Object params, String exec){
 
+    }
+
+    void exp2Exec(Object params, String exec){
+
+    }
 
 
 

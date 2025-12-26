@@ -640,4 +640,170 @@ abstract class SqlPoolHandler extends SqlHandler{
     List<GroovyRowResult> rows(GString gstring, int offset, int maxRows, Closure metaClosure) {
         throw new UnsupportedOperationException("pool rows not support Closure")
     }
+
+    @Override
+    @Deprecated
+    void query(String sql, Closure closure) {
+        throw new UnsupportedOperationException("pool rows not support Closure")
+    }
+
+    <R> R query(String sql, String execCode) {
+        def dataSourceInfo = DataSourceInfo.newBuilder().setExec(
+                ExecInfo.newBuilder().setRequestInfo(
+                        RequestInfo.newBuilder()
+                                .setReplyChannel("aeron:udp?endpoint=$PoolConfig.instance.clientHost:$PoolConfig.instance.clientPort".toString())
+                                .setReplyStream(PoolConfig.instance.clientSteamId)
+                                .build()
+                ).setMethod("execSql").build()
+        ).putOther("key", key)
+                .putOther("execPlus", "execPlus")
+                .putOther("execCode", execCode)
+//                .putOther("params", JSON.toJson(params))
+                .putOther("sql", sql).build()
+        def res = sqlExec(dataSourceInfo)
+        def resData = jsonSlurper.parseText(res)
+        if(resData instanceof List){
+            return (R) resData.collect { new GroovyRowResult(it as Map) }
+        }else{
+            return (R) new GroovyRowResult(resData as Map)
+        }
+    }
+
+
+    @Override
+    @Deprecated
+    void query(String sql, List<Object> params, Closure closure) {
+        throw new UnsupportedOperationException("pool rows not support Closure")
+    }
+
+    <R> R query(String sql, List<Object> params, String execCode) {
+        def dataSourceInfo = DataSourceInfo.newBuilder().setExec(
+                ExecInfo.newBuilder().setRequestInfo(
+                        RequestInfo.newBuilder()
+                                .setReplyChannel("aeron:udp?endpoint=$PoolConfig.instance.clientHost:$PoolConfig.instance.clientPort".toString())
+                                .setReplyStream(PoolConfig.instance.clientSteamId)
+                                .build()
+                ).setMethod("execSql").build()
+        ).putOther("key", key)
+                .putOther("execPlus", "execPlus")
+                .putOther("execCode", execCode)
+                .putOther("params", JSON.toJson(params))
+                .putOther("sql", sql).build()
+        def res = sqlExec(dataSourceInfo)
+        def resData = jsonSlurper.parseText(res)
+        if(resData instanceof List){
+            return (R) resData.collect { new GroovyRowResult(it as Map) }
+        }else{
+            return (R) new GroovyRowResult(resData as Map)
+        }
+    }
+
+    @Override
+    @Deprecated
+    void query(String sql, Map map, Closure closure) {
+        throw new UnsupportedOperationException("pool rows not support Closure")
+    }
+
+
+    <R> R query(String sql, Map map, String execCode) {
+        def dataSourceInfo = DataSourceInfo.newBuilder().setExec(
+                ExecInfo.newBuilder().setRequestInfo(
+                        RequestInfo.newBuilder()
+                                .setReplyChannel("aeron:udp?endpoint=$PoolConfig.instance.clientHost:$PoolConfig.instance.clientPort".toString())
+                                .setReplyStream(PoolConfig.instance.clientSteamId)
+                                .build()
+                ).setMethod("execSql").build()
+        ).putOther("key", key)
+                .putOther("execPlus", "execPlus")
+                .putOther("execCode", execCode)
+                .putOther("params", JSON.toJson(map))
+                .putOther("sql", sql).build()
+        def res = sqlExec(dataSourceInfo)
+        def resData = jsonSlurper.parseText(res)
+        if(resData instanceof List){
+            return (R) resData.collect { new GroovyRowResult(it as Map) }
+        }else{
+            return (R) new GroovyRowResult(resData as Map)
+        }
+    }
+
+    @Override
+    @Deprecated
+    void query(Map map, String sql, Closure closure) {
+        throw new UnsupportedOperationException("pool rows not support Closure")
+    }
+
+    <R> R query(Map map, String sql, String execCode) {
+        def dataSourceInfo = DataSourceInfo.newBuilder().setExec(
+                ExecInfo.newBuilder().setRequestInfo(
+                        RequestInfo.newBuilder()
+                                .setReplyChannel("aeron:udp?endpoint=$PoolConfig.instance.clientHost:$PoolConfig.instance.clientPort".toString())
+                                .setReplyStream(PoolConfig.instance.clientSteamId)
+                                .build()
+                ).setMethod("execSql").build()
+        ).putOther("key", key)
+                .putOther("execPlus", "execPlus")
+                .putOther("execCode", execCode)
+                .putOther("params", JSON.toJson(map))
+                .putOther("sql", sql).build()
+        def res = sqlExec(dataSourceInfo)
+        def resData = jsonSlurper.parseText(res)
+        if(resData instanceof List){
+            return (R) resData.collect { new GroovyRowResult(it as Map) }
+        }else{
+            return (R) new GroovyRowResult(resData as Map)
+        }
+    }
+
+
+    @Override
+    @Deprecated
+    void query(GString gstring, Closure closure) {
+        throw new UnsupportedOperationException("pool rows not support Closure")
+    }
+
+
+    <R> R query(GString gstring, String execCode) {
+        query(gstring.toString(), execCode)
+    }
+
+    @Override
+    <R> R expExec(Object params, String exec) {
+        def dataSourceInfo = DataSourceInfo.newBuilder().setExec(
+                ExecInfo.newBuilder().setRequestInfo(
+                        RequestInfo.newBuilder()
+                                .setReplyChannel("aeron:udp?endpoint=$PoolConfig.instance.clientHost:$PoolConfig.instance.clientPort".toString())
+                                .setReplyStream(PoolConfig.instance.clientSteamId)
+                                .build()
+                ).setMethod("execSql").build()
+        ).putOther("key", key)
+                .putOther("execPlus", "execPlus")
+                .putOther("execCode", exec)
+                .putOther("params", JSON.toJson(params))
+                .putOther("sql", sql).build()
+        def res = sqlExec(dataSourceInfo)
+        def resData = jsonSlurper.parseText(res)
+        if(resData instanceof List){
+            return (R) resData.collect { new GroovyRowResult(it as Map) }
+        }else{
+            return (R) new GroovyRowResult(resData as Map)
+        }
+    }
+
+    @Override
+    void exp2Exec(Object params, String exec) {
+        def dataSourceInfo = DataSourceInfo.newBuilder().setExec(
+                ExecInfo.newBuilder().setRequestInfo(
+                        RequestInfo.newBuilder()
+                                .setReplyChannel("aeron:udp?endpoint=$PoolConfig.instance.clientHost:$PoolConfig.instance.clientPort".toString())
+                                .setReplyStream(PoolConfig.instance.clientSteamId)
+                                .build()
+                ).setMethod("execSql").build()
+        ).putOther("key", key)
+                .putOther("execPlus", "execPlus")
+                .putOther("execCode", exec)
+                .putOther("params", JSON.toJson(params))
+                .putOther("sql", sql).build()
+        sqlExec2(dataSourceInfo)
+    }
 }
