@@ -29,7 +29,7 @@ import java.util.concurrent.atomic.AtomicInteger
  */
 class Application {
     private static final int PORT = 38880
-    private static final String SERVER_URL = "aeron:udp?endpoint=127.0.0.1:$PORT"
+    private static final String SERVER_URL = "aeron:udp?endpoint=0.0.0.0:$PORT"
     private static final int STREAM_ID = 2500
     private static final int MAX_RETRIES = 10
     private static final int RETRY_DELAY_MS = 100
