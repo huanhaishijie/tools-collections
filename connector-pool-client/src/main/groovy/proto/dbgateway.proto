@@ -21,6 +21,7 @@ message Response{
   int32 code = 2;
   string message = 3;
   map<string, string> data = 4;
+  bytes rowset = 5;
 }
 
 message DataSourceInfo{
@@ -36,8 +37,86 @@ message DataSourceInfo{
   map<string, string> other = 10;
 }
 
+message ChunkMessage {
+  string messageId = 1;
+  int32 totalChunks = 2;
+  int32 chunkIndex = 3;
+  bytes payload = 4;
+}
 
 
+
+enum ColumnType {
+  STRING = 0;
+  INT = 1;
+  LONG = 2;
+  DOUBLE = 3;
+  BYTES = 4;
+  TIMESTAMP = 5;
+}
+
+
+
+/* =========================
+ * 整个查询结果
+ * ========================= */
+message RowSet {
+  repeated ColumnMeta columns = 1;
+  repeated Row rows = 2;
+  // 可选：总行数（分页 / 流式时可不填）
+  int64 rowCount = 3;
+}
+
+/* =========================
+ * 列元信息
+ * ========================= */
+message ColumnMeta {
+  string name = 1;        // columnLabel
+  int32 jdbcType = 2;     // java.sql.Types
+  string typeName = 3;    // JDBC type name（varchar / numeric / jsonb）
+}
+
+
+/* =========================
+ * 一行数据
+ * ========================= */
+message Row {
+  repeated Value values = 1; // 与 columns 顺序一一对应
+}
+
+/* =========================
+ * 单元格值
+ * ========================= */
+message Value {
+  bool isNull = 1;
+
+  oneof kind {
+    int32   intVal     = 2;
+    int64   longVal    = 3;
+    double  doubleVal  = 4;
+    string  stringVal  = 5;
+    bytes   bytesVal   = 6;
+
+    Decimal decimalVal = 7;
+    TimeVal timeVal    = 8;
+  }
+}
+
+/* =========================
+ * 高精度小数（NUMERIC / DECIMAL）
+ * ========================= */
+message Decimal {
+  bytes unscaled = 1; // BigInteger.toByteArray()
+  int32 scale = 2;
+}
+
+
+/* =========================
+ * 时间类型（统一 long）
+ * ========================= */
+message TimeVal {
+  int64 epochMillis = 1;
+}
 
 
 

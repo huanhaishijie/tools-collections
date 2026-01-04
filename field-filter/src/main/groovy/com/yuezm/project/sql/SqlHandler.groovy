@@ -124,6 +124,9 @@ abstract class SqlHandler {
 
     }
 
+    boolean verify(){
+        return false
+    }
 
 
 }

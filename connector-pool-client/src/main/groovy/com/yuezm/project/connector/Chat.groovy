@@ -13,7 +13,7 @@ class Chat extends PropertyChangeClass{
 
     String chatId = UUID.randomUUID().toString()
     String sendMessage = ""
-    String receiveMessage = ""
+    def receiveMessage = ""
 
 
 

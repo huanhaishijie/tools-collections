@@ -7,6 +7,8 @@ import com.yuezm.project.sql.TableField
 import com.yuezm.project.sql.TableInfo
 import com.yuezm.project.sql.Wrapper
 
+
+
 /**
  * PGSqlPoolHandler
  *
@@ -265,9 +267,9 @@ class PGSqlPoolHandler extends SqlPoolHandler {
             消除“弱约束 JSON”的隐性 Bug
          */
         def properties = new DatasourceProperties(
-                url: "jdbc:postgresql://192.168.111.244:35432/gis_db?stringtype=unspecified&currentSchema=test",
+                url: "jdbc:postgresql://192.168.110.9:25432/demo?stringtype=unspecified&currentSchema=cdc",
                 username: "postgres",
-                password: "skzz@123",
+                password: "skzz@2023",
                 driverClassName: "org.postgresql.Driver")
 
         /**
@@ -277,10 +279,10 @@ class PGSqlPoolHandler extends SqlPoolHandler {
          * clientSteamId 当前服务接收流id
          * serverHost 服务端地址
          */
-        PoolConfig.instance.clientHost = "127.0.0.1"
-        PoolConfig.instance.clientPort = 38881
-        PoolConfig.instance.clientSteamId = 2500
-        PoolConfig.instance.serverHost = "127.0.0.1"
+//        PoolConfig.instance.clientHost = "192.168.110.222"
+//        PoolConfig.instance.clientPort = 38881
+//        PoolConfig.instance.clientSteamId = 2500
+//        PoolConfig.instance.serverHost = "192.168.110.222"
         /**
          * 2. 注册数据源
          *  创建实例会自动向服务端注册数据源，如果服务端这个数据被注册了，
@@ -290,26 +292,72 @@ class PGSqlPoolHandler extends SqlPoolHandler {
         /**
          * 3.使用handler执行sql
          */
-        def res = handler.firstRow("select * from test1 where id = ? ", ['1'])
-        println "更新之前：res.name:${res?.name}"
-        handler.execute([id: '1', name: "6sdfsfd"], "update test1 set name = :name where id = :id")
-        res = handler.firstRow([id:'1'], "select * from test1 where id = :id ")
-        println "更新之后：res.name:${res?.name}"
-        /**
-         * 4.使用查询功能,自定义返回结果（里面能用statement 和rowset,高度自定义）
-         * 4.1 内部参数-固定参数
-         *     (1).sqlHandler,sql执行器，具体使用参照groovy.sql.Sql
-         *     (2).JSON 可以序列化对象，已经特殊处理，不会把中文转成unicode,不可反序列化对象, 具体使用参考groovy.json.JsonGenerator
-         *     (3).sqlStr, 传入的sql
-         * 4.2 内部参数-可变参数
-         *      (1)args. 用户传入单个参数，使用 args[0]能获取到参数
-         *      (2)args. 用户传入集合参数，使用 args 得到这个集合参数
-         *      (3)任意参数，用户传入obj,如下案例，直接使用里面key(properties)
-         */
-        def res2 = handler.rows([id:'1'],"select * from test1 where id = :id", """
-            sqlHandler.rows(['id': id], sqlStr)
-""")
-        println res2
+//        def res = handler.firstRow("SELECT * FROM cccc")
+//        def res = handler.query("SELECT * FROM cccc", [params:[:]], """
+//def result = [:]
+//        def list = []
+//        def dispose = { java.sql.ResultSet rs ->
+//            java.sql.ResultSetMetaData metaData = rs.getMetaData()
+//            int columnCount = metaData.getColumnCount()
+//            result.fields = (1.. columnCount).collect {
+//                def f
+//                try {
+//                    String columnName= metaData.getColumnLabel(it)
+//                    if(!columnName){
+//                        columnName = metaData.getColumnName(it)
+//                    }
+//                    f = [field: columnName, dataType: metaData.getColumnTypeName(it)]
+//                }catch (java.sql.SQLException e){
+//                    e.printStackTrace()
+//                }
+//                f
+//            }
+//            while (rs.next()){
+//                def data = [:]
+//                (1.. columnCount).each{
+//                    String columnName= metaData.getColumnLabel(it)
+//                    if(!columnName){
+//                        columnName = metaData.getColumnName(it)
+//                    }
+//                    data[columnName] = rs.getObject(it)
+//                }
+//                list << data
+//            }
+//        }
+//
+//        if(params.size() > 0){
+//            sqlHandler.query(sqlStr, params, dispose)
+//        }else {
+//            sqlHandler.query(sqlStr, dispose)
+//        }
+//        result.datas=list
+//        return result
+//""")
+//        println "更新之前：res.name:${res?.name}"
+//        handler.execute([id: '1', name: "6sdfsfd"], "update test1 set name = :name where id = :id")
+//        res = handler.firstRow([id:'1'], "select * from test1 where id = :id ")
+//        println "更新之后：res.name:${res?.name}"
+//        /**
+//         * 4.使用查询功能,自定义返回结果（里面能用statement 和rowset,高度自定义）
+//         * 4.1 内部参数-固定参数
+//         *     (1).sqlHandler,sql执行器，具体使用参照groovy.sql.Sql
+//         *     (2).JSON 可以序列化对象，已经特殊处理，不会把中文转成unicode,不可反序列化对象, 具体使用参考groovy.json.JsonGenerator
+//         *     (3).sqlStr, 传入的sql
+//         * 4.2 内部参数-可变参数
+//         *      (1)args. 用户传入单个参数，使用 args[0]能获取到参数
+//         *      (2)args. 用户传入集合参数，使用 args 得到这个集合参数
+//         *      (3)任意参数，用户传入obj,如下案例，直接使用里面key(properties)
+//         */
+//        def res2 = handler.rows([id:'1'],"select * from test1 where id = :id", """
+//            sqlHandler.rows(['id': id], sqlStr)
+//""")
+        def s = System.currentTimeMillis()
+        println "search start time: $s"
+        def res = handler.rows("SELECT * FROM cccc")
+        def e = System.currentTimeMillis()
+        println "search end time: $e"
+        println "cost: ${(e - s)/1000} s"
+
     }
 
 

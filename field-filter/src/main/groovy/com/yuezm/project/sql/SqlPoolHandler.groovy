@@ -2,8 +2,12 @@ package com.yuezm.project.sql
 
 import com.yuezm.project.connector.Client
 import com.yuezm.project.connector.proto.DataSourceInfo
+import com.yuezm.project.connector.proto.Decimal
 import com.yuezm.project.connector.proto.ExecInfo
 import com.yuezm.project.connector.proto.RequestInfo
+import com.yuezm.project.connector.proto.RowSet
+import com.yuezm.project.connector.proto.TimeVal
+import com.yuezm.project.connector.proto.Value
 import groovy.json.JsonGenerator
 import groovy.json.JsonSlurper
 import groovy.sql.GroovyRowResult
@@ -120,7 +124,7 @@ abstract class SqlPoolHandler extends SqlHandler{
                 ).setMethod("execSql").build()
         ).putOther("key", key).putOther("exec", "firstRow").putOther("sql", sql).build()
         def res = sqlExec(dataSourceInfo)
-        def map = jsonSlurper.parseText(res) as Map<String, Object>
+        def map = jsonSlurper.parseText(res as String) as Map<String, Object>
         return new GroovyRowResult(map)
     }
 
@@ -143,7 +147,7 @@ abstract class SqlPoolHandler extends SqlHandler{
                 .putOther("params", JSON.toJson(params))
                 .putOther("sql", sql).build()
         def res = sqlExec(dataSourceInfo)
-        def map = jsonSlurper.parseText(res) as Map<String, Object>
+        def map = jsonSlurper.parseText(res as String) as Map<String, Object>
         return new GroovyRowResult(map)
     }
 
@@ -161,7 +165,7 @@ abstract class SqlPoolHandler extends SqlHandler{
                 .putOther("params", JSON.toJson(params))
                 .putOther("sql", sql).build()
         def res = sqlExec(dataSourceInfo)
-        def map = jsonSlurper.parseText(res) as Map<String, Object>
+        def map = jsonSlurper.parseText(res as String) as Map<String, Object>
         return new GroovyRowResult(map)
     }
 
@@ -179,13 +183,13 @@ abstract class SqlPoolHandler extends SqlHandler{
                 .putOther("params", JSON.toJson(params))
                 .putOther("sql", sql).build()
         def res = sqlExec(dataSourceInfo)
-        def map = jsonSlurper.parseText(res) as Map<String, Object>
+        def map = jsonSlurper.parseText(res as String) as Map<String, Object>
         return new GroovyRowResult(map)
     }
 
 
-    protected String sqlExec(DataSourceInfo dataSourceInfo){
-        def responseFuture = new CompletableFuture<String>()
+    protected Object sqlExec(DataSourceInfo dataSourceInfo){
+        def responseFuture = new CompletableFuture<Object>()
         def latch = new CountDownLatch(1)
         client.send dataSourceInfo, { backInfo ->
             println "Received response: ${backInfo?.newValue}"
@@ -400,7 +404,10 @@ abstract class SqlPoolHandler extends SqlHandler{
                 .putOther("sql", sql)
                 .build()
         def res = sqlExec(dataSourceInfo)
-        def list = jsonSlurper.parseText(res) as List<Map>
+        if(res instanceof RowSet){
+            return disposeRowSet(res as RowSet)
+        }
+        def list = jsonSlurper.parseText(res as String) as List<Map>
         return list?.collect { new GroovyRowResult(it) }
     }
 
@@ -431,7 +438,7 @@ abstract class SqlPoolHandler extends SqlHandler{
 //                .putOther("params", JSON.toJson(params))
                 .putOther("sql", sql).build()
         def res = sqlExec(dataSourceInfo)
-        def list = jsonSlurper.parseText(res) as List<Map>
+        def list = jsonSlurper.parseText(res as String) as List<Map>
         return list?.collect { new GroovyRowResult(it) }
     }
 
@@ -458,7 +465,10 @@ abstract class SqlPoolHandler extends SqlHandler{
                 .putOther("sql", sql)
                 .build()
         def res = sqlExec(dataSourceInfo)
-        def list = jsonSlurper.parseText(res) as List<Map>
+        if(res instanceof RowSet){
+            return disposeRowSet(res as RowSet)
+        }
+        def list = jsonSlurper.parseText(res as String) as List<Map>
         return list?.collect { new GroovyRowResult(it) }
     }
 
@@ -477,7 +487,10 @@ abstract class SqlPoolHandler extends SqlHandler{
                 .putOther("sql", sql)
                 .build()
         def res = sqlExec(dataSourceInfo)
-        def list = jsonSlurper.parseText(res) as List<Map>
+        if(res instanceof RowSet){
+            return disposeRowSet(res as RowSet)
+        }
+        def list = jsonSlurper.parseText(res as String) as List<Map>
         return list?.collect { new GroovyRowResult(it) }
     }
 
@@ -514,7 +527,10 @@ abstract class SqlPoolHandler extends SqlHandler{
                 .putOther("sql", sql)
                 .build()
         def res = sqlExec(dataSourceInfo)
-        def list = jsonSlurper.parseText(res) as List<Map>
+        if(res instanceof RowSet){
+            return disposeRowSet(res as RowSet)
+        }
+        def list = jsonSlurper.parseText(res as String) as List<Map>
         return list?.collect { new GroovyRowResult(it) }
     }
 
@@ -544,7 +560,7 @@ abstract class SqlPoolHandler extends SqlHandler{
                 .putOther("params", JSON.toJson(params))
                 .putOther("sql", sql).build()
         def res = sqlExec(dataSourceInfo)
-        def list = jsonSlurper.parseText(res) as List<Map>
+        def list = jsonSlurper.parseText(res as String) as List<Map>
         return list?.collect { new GroovyRowResult(it) }
     }
 
@@ -568,7 +584,7 @@ abstract class SqlPoolHandler extends SqlHandler{
                 .putOther("params", JSON.toJson(params))
                 .putOther("sql", sql).build()
         def res = sqlExec(dataSourceInfo)
-        def list = jsonSlurper.parseText(res) as List<Map>
+        def list = jsonSlurper.parseText(res as String) as List<Map>
         return list?.collect { new GroovyRowResult(it) }
     }
 
@@ -592,7 +608,7 @@ abstract class SqlPoolHandler extends SqlHandler{
                 .putOther("params", JSON.toJson(params))
                 .putOther("sql", sql).build()
         def res = sqlExec(dataSourceInfo)
-        def list = jsonSlurper.parseText(res) as List<Map>
+        def list = jsonSlurper.parseText(res as String) as List<Map>
         return list?.collect { new GroovyRowResult(it) }
     }
 
@@ -661,7 +677,7 @@ abstract class SqlPoolHandler extends SqlHandler{
 //                .putOther("params", JSON.toJson(params))
                 .putOther("sql", sql).build()
         def res = sqlExec(dataSourceInfo)
-        def resData = jsonSlurper.parseText(res)
+        def resData = jsonSlurper.parseText(res as String)
         if(resData instanceof List){
             return (R) resData.collect { new GroovyRowResult(it as Map) }
         }else{
@@ -690,7 +706,7 @@ abstract class SqlPoolHandler extends SqlHandler{
                 .putOther("params", JSON.toJson(params))
                 .putOther("sql", sql).build()
         def res = sqlExec(dataSourceInfo)
-        def resData = jsonSlurper.parseText(res)
+        def resData = jsonSlurper.parseText(res as String)
         if(resData instanceof List){
             return (R) resData.collect { new GroovyRowResult(it as Map) }
         }else{
@@ -719,7 +735,7 @@ abstract class SqlPoolHandler extends SqlHandler{
                 .putOther("params", JSON.toJson(map))
                 .putOther("sql", sql).build()
         def res = sqlExec(dataSourceInfo)
-        def resData = jsonSlurper.parseText(res)
+        def resData = jsonSlurper.parseText(res as String)
         if(resData instanceof List){
             return (R) resData.collect { new GroovyRowResult(it as Map) }
         }else{
@@ -747,7 +763,7 @@ abstract class SqlPoolHandler extends SqlHandler{
                 .putOther("params", JSON.toJson(map))
                 .putOther("sql", sql).build()
         def res = sqlExec(dataSourceInfo)
-        def resData = jsonSlurper.parseText(res)
+        def resData = jsonSlurper.parseText(res as String)
         if(resData instanceof List){
             return (R) resData.collect { new GroovyRowResult(it as Map) }
         }else{
@@ -782,7 +798,7 @@ abstract class SqlPoolHandler extends SqlHandler{
                 .putOther("params", JSON.toJson(params))
                 .putOther("sql", sql).build()
         def res = sqlExec(dataSourceInfo)
-        def resData = jsonSlurper.parseText(res)
+        def resData = jsonSlurper.parseText(res as String)
         if(resData instanceof List){
             return (R) resData.collect { new GroovyRowResult(it as Map) }
         }else{
@@ -806,4 +822,86 @@ abstract class SqlPoolHandler extends SqlHandler{
                 .putOther("sql", sql).build()
         sqlExec2(dataSourceInfo)
     }
+
+
+    boolean verify(){
+        def dataSourceInfo = DataSourceInfo.newBuilder().setExec(
+                ExecInfo.newBuilder().setRequestInfo(
+                        RequestInfo.newBuilder()
+                                .setReplyChannel("aeron:udp?endpoint=$PoolConfig.instance.clientHost:$PoolConfig.instance.clientPort".toString())
+                                .setReplyStream(PoolConfig.instance.clientSteamId)
+                                .build()
+                ).setMethod("verifyDb").build()
+        ).putOther("key", key)
+         .build()
+        try {
+            def res = sqlExec(dataSourceInfo) as String
+            return Boolean.valueOf(res)
+        }catch (Exception e){
+            return false
+        }
+    }
+
+
+    protected List<GroovyRowResult> disposeRowSet(RowSet rowSet) {
+        List<GroovyRowResult> results = []
+
+        if (!rowSet || rowSet.rowsCount == 0) {
+            return results
+        }
+
+        // 获取列名列表
+        List<String> columnNames = rowSet.columnsList.collect { it.name }
+
+        // 遍历每一行
+        rowSet.rowsList.each { row ->
+            GroovyRowResult groovyRow = [:] as GroovyRowResult
+
+            row.valuesList.eachWithIndex { val, idx ->
+                String colName = columnNames[idx]
+                groovyRow.put(colName, valueToObject(val))
+            }
+
+            results << groovyRow
+        }
+
+        return results
+    }
+
+    protected Object valueToObject(Value val) {
+        if (val.isNull) {
+            return null
+        }
+
+        switch (val.kindCase) {
+
+            case Value.KindCase.INTVAL:
+                return val.intVal
+
+            case Value.KindCase.LONGVAL:
+                return val.longVal
+
+            case Value.KindCase.DOUBLEVAL:
+                return val.doubleVal
+
+            case Value.KindCase.STRINGVAL:
+                // ⚠️ 关键：STRINGVAL 既可能是 varchar，也可能是 decimal
+                return val.stringVal
+
+            case Value.KindCase.BYTESVAL:
+                return val.bytesVal.toByteArray()
+
+            case Value.KindCase.DECIMALVAL:
+                Decimal dec = val.decimalVal
+                BigInteger unscaled = new BigInteger(dec.unscaled.toByteArray())
+                return new BigDecimal(unscaled, dec.scale)
+
+            case Value.KindCase.TIMEVAL:
+                return new Date(val.timeVal.epochMillis)
+
+            default:
+                return null
+        }
+    }
+
 }

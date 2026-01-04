@@ -1,7 +1,9 @@
 package com.yuezm.project.connector
 
+import com.yuezm.project.connector.proto.ChunkMessage
 import com.yuezm.project.connector.proto.DataSourceInfo
 import com.yuezm.project.connector.proto.Response
+import com.yuezm.project.connector.proto.RowSet
 import groovyx.gpars.actor.Actors
 import io.aeron.Aeron
 import io.aeron.FragmentAssembler
@@ -37,6 +39,8 @@ class Client {
 
     private static final AtomicInteger rr = new AtomicInteger(0)
     private static List workers = []
+
+    private static volatile Map<String, List<byte[]>> messageBuffer = [:]
 
     private Client(String host = "127.0.0.1", int port = 38881, int streamId = 2500, String serverHost = "127.0.0.1", String model = "local", String shell = "") {
         this.host = host
@@ -79,20 +83,45 @@ class Client {
     }
 
     private static void initWorker() {
-        // 使用独立 Actor 线程池处理消息
         2.times {
             workers << Actors.actor {
                 loop {
                     react { WorkItem workItem ->
                         try {
-                            Response res = Response.parseFrom(workItem.data)
-                            String chatId = res.getExec().getRequestInfo().getChatId()
-                            if (res.getCode() != 0) {
-                                throw new RuntimeException("chatId: ${chatId}, code:${res.getCode()} error: ${res.getMessage()}")
+                            ChunkMessage chunk = ChunkMessage.parseFrom(workItem.data)
+                            String messageId = chunk.getMessageId()
+                            // 初始化分片列表
+                            if (!messageBuffer.containsKey(messageId)) {
+                                messageBuffer[messageId] = new ArrayList<>(chunk.getTotalChunks())
+                                for (int i = 0; i < chunk.getTotalChunks(); i++) messageBuffer[messageId].add(null)
                             }
-                            if (chats[chatId]) {
-                                chats[chatId].receiveMessage = res.getDataOrDefault("res", null)
-                                chats.remove chatId
+                            // 存放分片
+                            messageBuffer[messageId][chunk.getChunkIndex()] = chunk.getPayload().toByteArray()
+                            // 检查是否收齐
+                            if (!messageBuffer[messageId].contains(null)) {
+                                // 拼接完整数据
+                                ByteArrayOutputStream baos = new ByteArrayOutputStream()
+                                messageBuffer[messageId].each { baos.write(it) }
+                                byte[] fullData = baos.toByteArray()
+
+                                // 解析完整 Response
+                                Response res = Response.parseFrom(fullData)
+                                String chatId = res.getExec().getRequestInfo().getChatId()
+                                if (res.getCode() != 0) {
+                                    throw new RuntimeException("chatId: ${chatId}, code:${res.getCode()} error: ${res.getMessage()}")
+                                }
+
+                                if (chats[chatId]) {
+                                    def r = res.getDataOrDefault("res", null)
+                                    if(r == "rowset"){
+                                        chats[chatId].receiveMessage = RowSet.parseFrom(res.getRowset())
+                                    }else {
+                                        chats[chatId].receiveMessage = r
+                                    }
+                                    chats.remove(chatId)
+                                }
+                                // 清理缓存
+                                messageBuffer.remove(messageId)
                             }
                         } catch(Exception e) {
                             e.printStackTrace()

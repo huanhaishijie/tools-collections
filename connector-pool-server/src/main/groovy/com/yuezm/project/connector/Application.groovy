@@ -1,5 +1,7 @@
 package com.yuezm.project.connector
 
+import com.google.protobuf.ByteString
+import com.yuezm.project.connector.proto.ChunkMessage
 import com.yuezm.project.connector.proto.DataSourceInfo
 import groovyx.gpars.actor.Actors
 import io.aeron.Aeron
@@ -353,25 +355,50 @@ class Application {
         }
 
         byte[] out = resp.toByteArray()
-        println "out length: $out.length "
-        UnsafeBuffer buf = new UnsafeBuffer(out)
+        int totalLen = out.length
+        int maxChunkSize = 1024 * 1024 - 1024
+        String messageId = UUID.randomUUID().toString()
 
-        while (true) {
-            long r = pub.offer(buf)
-            if (r > 0) return
+        int totalChunks = (totalLen + maxChunkSize - 1) / maxChunkSize as int
 
-            if (r == Publication.BACK_PRESSURED ||
-                    r == Publication.ADMIN_ACTION ||
-                    r == Publication.NOT_CONNECTED) {
-                Thread.onSpinWait()
-                continue
-            }
+        IdleStrategy idle = new BackoffIdleStrategy(1, 10, 1000, 10000)
 
-            if (r == Publication.CLOSED) {
-                pubs.remove(key)
-                return
+        for (int i = 0; i < totalChunks; i++) {
+            int start = i * maxChunkSize
+            int len = Math.min(maxChunkSize, totalLen - start)
+            println "total len : $totalLen, current index: $i, start: $start end: $len"
+            ChunkMessage msg = ChunkMessage.newBuilder()
+                    .setMessageId(messageId)
+                    .setTotalChunks(totalChunks)
+                    .setChunkIndex(i)
+                    .setPayload(ByteString.copyFrom(out, start, len))
+                    .build()
+
+            UnsafeBuffer buf = new UnsafeBuffer(msg.toByteArray())
+
+            while (true) {
+                long r = pub.offer(buf)
+                if (r > 0) {
+                    idle.reset()
+                    break
+                }
+
+                if (r == Publication.BACK_PRESSURED ||
+                        r == Publication.ADMIN_ACTION ||
+                        r == Publication.NOT_CONNECTED) {
+                    idle.idle()
+                    continue
+                }
+
+                if (r == Publication.CLOSED) {
+                    pubs.remove(key)
+                    return
+                }
+
+                throw new IllegalStateException("Unexpected offer result: " + r)
             }
         }
     }
+
 
 }
