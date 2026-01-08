@@ -50,6 +50,8 @@ class DBServer {
     private static final JsonGenerator JSON =
             new JsonGenerator.Options().disableUnicodeEscaping().build()
 
+    private static ThreadLocal<Response> currentResponse = new ThreadLocal<>()
+
 
     /** 只缓存 DataSource（线程安全） */
     private static final Map<String, HikariDataSource> DATA_SOURCES =
@@ -69,9 +71,19 @@ class DBServer {
         } }
     }
 
+    private static void initCurrentResponse(DataSourceInfo info){
+        if(!currentResponse.get()){
+            currentResponse.set(Response.newBuilder().setExec(info.exec).build())
+        }
+    }
+
+    private static void removeCurrentResponse(){
+        currentResponse.remove()
+    }
 
 
-    private static RowSet buildRowSetFast(ResultSet rs) {
+
+    private static void buildRowSetFast(ResultSet rs) {
         def meta = rs.metaData
         final int colCount = meta.columnCount
 
@@ -85,13 +97,16 @@ class DBServer {
 
         // ==== columns ====
         for (int i = 1; i <= colCount; i++) {
-            rsBuilder.addColumns(
-                    ColumnMeta.newBuilder()
-                            .setName(meta.getColumnLabel(i))
-                            .setJdbcType(jdbcTypes[i - 1])
-                            .setTypeName(meta.getColumnTypeName(i))
-            )
+            def res = currentResponse.get()
+            res = res.toBuilder().putData("res", "ColumnMeta").setRowset(ColumnMeta.newBuilder()
+                    .setName(meta.getColumnLabel(i))
+                    .setJdbcType(jdbcTypes[i - 1])
+                    .setTypeName(meta.getColumnTypeName(i)).build().toByteString()).build()
+            Application.sendResponseInternal(res)
         }
+
+
+
 
         // ==== rows ====
         while (rs.next()) {
@@ -160,11 +175,10 @@ class DBServer {
 
                 row.addValues(vb)
             }
-
-            rsBuilder.addRows(row)
+            def res = currentResponse.get()
+            res = res.toBuilder().putData("res", "Row").setRowset(row.build().toByteString()).build()
+            Application.sendResponseInternal(res)
         }
-
-        return rsBuilder.build()
     }
 
     private static RowSet buildRowSet(java.sql.ResultSet rs) {
@@ -373,6 +387,7 @@ class DBServer {
     }
 
     Response execSql(DataSourceInfo info) {
+        initCurrentResponse(info)
         String key = info.getOtherOrDefault("key", "")
         if (!key) {
             key = calcKey(info)
@@ -407,14 +422,13 @@ class DBServer {
                 if (params instanceof Map) {
                     switch (exec) {
                         case "rows": {
-                            def r = null
                             sql.withStatement { stmt ->
                                 stmt.fetchSize = 1000
                             }
                             sql.query(p.sql, p.params as Map) { ResultSet rs ->
-                                r = buildRowSetFast(rs)
+                                buildRowSetFast(rs)
                             }
-                            return r
+                            return 1
                         }
                         case "execute":  return sql.execute(params as Map, sqlStr)
                         case "firstRow": return sql.firstRow(params as Map, sqlStr)
@@ -422,14 +436,13 @@ class DBServer {
                 } else if (params instanceof List) {
                     switch (exec) {
                         case "rows": {
-                            def r = null
                             sql.withStatement { stmt ->
                                 stmt.fetchSize = 1000
                             }
                             sql.query(sqlStr, params as List) { ResultSet rs ->
-                                r = buildRowSetFast(rs)
+                                buildRowSetFast(rs)
                             }
-                            return r
+                            return 1
                         }
                         case "execute":  return sql.execute(sqlStr, params as List)
                         case "firstRow": return sql.firstRow(sqlStr, params as List)
@@ -437,14 +450,13 @@ class DBServer {
                 } else {
                     switch (exec) {
                         case "rows": {
-                            def r = null
                             sql.withStatement { stmt ->
                                 stmt.fetchSize = 1000
                             }
                             sql.query(sqlStr) { ResultSet rs ->
-                                r = buildRowSetFast(rs)
+                                 buildRowSetFast(rs)
                             }
-                            return r
+                            return 1
                         }
                         case "execute":  return sql.execute(sqlStr)
                         case "firstRow": return sql.firstRow(sqlStr)
@@ -457,13 +469,13 @@ class DBServer {
                     .setMessage(OK)
             if (result != null) {
                 if(exec == "rows"){
-                    builder.putData("res", "rowset")
-                    builder.setRowset((result as RowSet).toByteString())
+                    builder.putData("res", "stream")
+                    builder.setRowset(RowSet.newBuilder().build().toByteString())
                 }else {
                     builder.putData("res", JSON.toJson(result))
                 }
             }
-
+            removeCurrentResponse()
             return builder.build()
 
         } catch (Exception e) {

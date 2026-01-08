@@ -344,7 +344,7 @@ class Application {
         }
     }
 
-    private static void sendResponseInternal(Response resp) {
+    protected static void sendResponseInternal(Response resp) {
         if (!resp.hasExec() || !resp.exec.hasRequestInfo()) return
 
         def ri = resp.exec.requestInfo
@@ -357,7 +357,7 @@ class Application {
         byte[] out = resp.toByteArray()
         int totalLen = out.length
         int maxChunkSize = 1024 * 1024 - 1024
-        String messageId = UUID.randomUUID().toString()
+        String messageId = UUID.randomUUID().toString() + System.currentTimeMillis()
 
         int totalChunks = (totalLen + maxChunkSize - 1) / maxChunkSize as int
 
@@ -366,7 +366,7 @@ class Application {
         for (int i = 0; i < totalChunks; i++) {
             int start = i * maxChunkSize
             int len = Math.min(maxChunkSize, totalLen - start)
-            println "total len : $totalLen, current index: $i, start: $start end: $len"
+            println "messageId: $messageId totalChunks:$totalChunks total len : $totalLen, current index: $i, start: $start end: $len"
             ChunkMessage msg = ChunkMessage.newBuilder()
                     .setMessageId(messageId)
                     .setTotalChunks(totalChunks)

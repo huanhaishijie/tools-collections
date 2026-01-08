@@ -1,8 +1,10 @@
 package com.yuezm.project.connector
 
 import com.yuezm.project.connector.proto.ChunkMessage
+import com.yuezm.project.connector.proto.ColumnMeta
 import com.yuezm.project.connector.proto.DataSourceInfo
 import com.yuezm.project.connector.proto.Response
+import com.yuezm.project.connector.proto.Row
 import com.yuezm.project.connector.proto.RowSet
 import groovyx.gpars.actor.Actors
 import io.aeron.Aeron
@@ -40,7 +42,7 @@ class Client {
     private static final AtomicInteger rr = new AtomicInteger(0)
     private static List workers = []
 
-    private static volatile Map<String, List<byte[]>> messageBuffer = [:]
+    private static volatile ConcurrentHashMap<String, List<byte[]>> messageBuffer = [:]
 
     private Client(String host = "127.0.0.1", int port = 38881, int streamId = 2500, String serverHost = "127.0.0.1", String model = "local", String shell = "") {
         this.host = host
@@ -90,11 +92,14 @@ class Client {
                         try {
                             ChunkMessage chunk = ChunkMessage.parseFrom(workItem.data)
                             String messageId = chunk.getMessageId()
-                            // 初始化分片列表
-                            if (!messageBuffer.containsKey(messageId)) {
-                                messageBuffer[messageId] = new ArrayList<>(chunk.getTotalChunks())
-                                for (int i = 0; i < chunk.getTotalChunks(); i++) messageBuffer[messageId].add(null)
+                            synchronized (messageBuffer){
+                                // 初始化分片列表
+                                if (!messageBuffer.containsKey(messageId)) {
+                                    messageBuffer[messageId] = new ArrayList<>(chunk.getTotalChunks() )
+                                    for (int i = 0; i < chunk.getTotalChunks(); i++) messageBuffer[messageId].add(null)
+                                }
                             }
+
                             // 存放分片
                             messageBuffer[messageId][chunk.getChunkIndex()] = chunk.getPayload().toByteArray()
                             // 检查是否收齐
@@ -110,17 +115,31 @@ class Client {
                                 if (res.getCode() != 0) {
                                     throw new RuntimeException("chatId: ${chatId}, code:${res.getCode()} error: ${res.getMessage()}")
                                 }
-
                                 if (chats[chatId]) {
                                     def r = res.getDataOrDefault("res", null)
                                     if(r == "rowset"){
                                         chats[chatId].receiveMessage = RowSet.parseFrom(res.getRowset())
-                                    }else {
+                                    }else if(r == "ColumnMeta"){
+                                        if(chats[chatId].otherData == null){
+                                            chats[chatId].otherData = RowSet.newBuilder().build()
+                                        }
+                                        (chats[chatId].otherData as RowSet).toBuilder().addColumns(ColumnMeta.parseFrom(res.getRowset())).build()
+                                    }else if(r == "Row"){
+                                        if(chats[chatId].otherData == null){
+                                            chats[chatId].otherData = RowSet.newBuilder().build()
+                                        }
+                                        (chats[chatId].otherData as RowSet).toBuilder().addRows(Row.parseFrom(res.getRowset())).build()
+                                    }else if(r == "stream"){
+                                        chats[chatId].receiveMessage = chats[chatId].otherData
+                                        chats.remove(chatId)
+                                    } else {
                                         chats[chatId].receiveMessage = r
+                                        chats.remove(chatId)
                                     }
-                                    chats.remove(chatId)
+
                                 }
                                 // 清理缓存
+//                                println "remove messageId: ${messageId}"
                                 messageBuffer.remove(messageId)
                             }
                         } catch(Exception e) {
@@ -174,7 +193,7 @@ class Client {
 
     void send(DataSourceInfo dataSourceInfo, Closure callback) {
         def chat = new Chat()
-        chat.addPropertyChangeListener callback
+        chat.addPropertyChangeListener "receiveMessage", callback
         chats[chat.chatId] = chat
         dataSourceInfo.getExec().getRequestInfo().setChatId(chat.chatId)
         try {

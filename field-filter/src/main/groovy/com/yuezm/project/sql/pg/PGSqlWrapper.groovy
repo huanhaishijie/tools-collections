@@ -76,7 +76,7 @@ class PGSqlWrapper extends Wrapper{
         if(closure){
             return super.generateDdl(t, closure)
         }
-        def ddl = " CREATE TABLE $t.tableName (\n"
+        def ddl = " CREATE TABLE \"$t.tableName\" (\n"
         def pks= []
         def primary = ""
         def comments = []
@@ -128,7 +128,7 @@ class PGSqlWrapper extends Wrapper{
                     pks << getColumn(colName)
                 }
                 if(comment){
-                    comments << " COMMENT ON COLUMN $t.tableName.${getColumn(colName)} IS '${comment}' ;"
+                    comments << " COMMENT ON COLUMN \"$t.tableName\".${getColumn(colName)} IS '${comment}' ;"
                 }
             }
         }
@@ -138,7 +138,7 @@ class PGSqlWrapper extends Wrapper{
         }
         ddl += "$primary) ;"
         if(t.comment){
-            comments << " COMMENT ON TABLE $t.tableName IS '${t.comment}' ;"
+            comments << " COMMENT ON TABLE \"$t.tableName\" IS '${t.comment}' ;"
         }
         if(comments.size() > 0){
             comments.each {
