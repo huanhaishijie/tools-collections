@@ -41,13 +41,41 @@ gradle build
 
 ## 使用示例
 
+
+引入依赖
+
+```xml
+<dependency>
+  <groupId>com.yuezm.project.connector</groupId>
+  <artifactId>connector-pool-client</artifactId>
+  <version>1.0.0</version>
+</dependency>
+<dependency>
+  <groupId>com.google.protobuf</groupId>
+  <artifactId>protobuf-java</artifactId>
+  <version>3.24.4</version>
+</dependency>
+```
+
 ### 1. 初始化客户端
 
 ```groovy
 def client = Client.getInstance("127.0.0.1", 38881, 2500, "127.0.0.1")
 ```
 
+#### 1.1 参数配置
+Client 属性
+
+host: client ip地址
+
+port: 客户端接收端口
+
+streamId:客户端接收流id
+
+serverHost : 服务端地址
+
 ### 2. 注册数据库连接
+groovy 代码：
 
 ```groovy
 def registerInfo = DataSourceInfo.newBuilder().setExec(
@@ -57,11 +85,13 @@ def registerInfo = DataSourceInfo.newBuilder().setExec(
             .setReplyStream(2500)
             .build()
     ).setMethod("register").build()
-).putOther("key", "your-db-key")
- .putOther("url", "jdbc:mysql://localhost:3306/your_database")
- .putOther("username", "db_user")
- .putOther("password", "db_password")
- .putOther("driverClassName", "com.mysql.cj.jdbc.Driver")
+).setType("com.mysql.cj.jdbc.Driver")
+                .setUsername("root")
+                .setPassword("skzz@2021")
+                .setMaxPoolSize(10)
+                .setMinPoolSize(1)
+                .setIdleTimeout(60000)
+                .setConnectionTimeout(30000)
  .build()
 
 client.send(registerInfo) { response ->
@@ -69,35 +99,60 @@ client.send(registerInfo) { response ->
 }
 ```
 
-### 3. 执行SQL查询
+java 代码：
 
+```java
+// First, create the RequestInfo
+RequestInfo requestInfo = RequestInfo.newBuilder()
+.setReplyChannel("aeron:udp?endpoint=127.0.0.1:38881")
+.setReplyStream(2500)
+.build();
+
+// Then create the ExecInfo with the RequestInfo
+ExecInfo execInfo = ExecInfo.newBuilder()
+.setRequestInfo(requestInfo)
+.setMethod("register")
+.build();
+
+// Finally, build the DataSourceInfo with all parameters
+DataSourceInfo registerInfo = DataSourceInfo.newBuilder()
+.setExec(execInfo)
+.setType("com.mysql.cj.jdbc.Driver")
+                .setUsername("root")
+                .setPassword("skzz@2021")
+                .setMaxPoolSize(10)
+                .setMinPoolSize(1)
+                .setIdleTimeout(60000)
+                .setConnectionTimeout(30000)
+.build();
+
+// Send the request with callback
+client.send(registerInfo, new Closure(this){{
+    @Override
+    Object call(){
+        println "数据库注册结果: ${response}"//业务逻辑
+    }
+}});
+```
+
+
+
+### 3. 执行SQL查询
 ```groovy
 def dataSourceInfo = DataSourceInfo.newBuilder().setExec(
-    ExecInfo.newBuilder().setRequestInfo(
-        RequestInfo.newBuilder()
-            .setReplyChannel("aeron:udp?endpoint=127.0.0.1:38881")
-            .setReplyStream(2500)
-            .build()
-    ).setMethod("execSql").build()
+        ExecInfo.newBuilder().setRequestInfo(
+                RequestInfo.newBuilder()
+                        .setReplyChannel("aeron:udp?endpoint=127.0.0.1:38881")
+                        .setReplyStream(2500)
+                        .build()
+        ).setMethod("execSql").build()
 ).putOther("key", "your-db-key")
- .putOther("exec", "rows")
- .putOther("sql", "SELECT * FROM your_table")
- .build()
+        .putOther("exec", "rows")
+        .putOther("sql", "SELECT * FROM your_table")
+        .build()
 
-// 处理查询结果
 client.send(dataSourceInfo) { response ->
-    if (response instanceof RowSet) {
-        // 处理行数据
-        response.rowsList.each { row ->
-            println "行数据: ${row}"
-        }
-        // 获取列元数据
-        response.columnsList.each { column ->
-            println "列信息: ${column.name} (${column.type})"
-        }
-    } else {
-        println "查询结果: ${response}"
-    }
+  println "查询结果: ${response}"
 }
 ```
 
@@ -133,7 +188,7 @@ client.send(dataSourceInfo) { response ->
     }
 }
 ```
-### 4. 更多信息观看
+### 5. 更多信息观看
 [README.md](../field-filter/src/main/groovy/com/yuezm/project/sql/README.md)
 
 ## API 参考
