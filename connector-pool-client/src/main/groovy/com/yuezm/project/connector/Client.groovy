@@ -85,7 +85,7 @@ class Client {
     }
 
     private static void initWorker() {
-        2.times {
+        1.times {
             workers << Actors.actor {
                 loop {
                     react { WorkItem workItem ->
@@ -123,12 +123,12 @@ class Client {
                                         if(chats[chatId].otherData == null){
                                             chats[chatId].otherData = RowSet.newBuilder().build()
                                         }
-                                        (chats[chatId].otherData as RowSet).toBuilder().addColumns(ColumnMeta.parseFrom(res.getRowset())).build()
-                                    }else if(r == "Row"){
+                                        chats[chatId].otherData = (chats[chatId].otherData as RowSet).toBuilder().addColumns(ColumnMeta.parseFrom(res.getRowset())).build()
+                                    }else if(r == "Rows"){
                                         if(chats[chatId].otherData == null){
                                             chats[chatId].otherData = RowSet.newBuilder().build()
                                         }
-                                        (chats[chatId].otherData as RowSet).toBuilder().addRows(Row.parseFrom(res.getRowset())).build()
+                                        chats[chatId].otherData = (chats[chatId].otherData as RowSet).toBuilder().addAllRows(RowSet.parseFrom(res.getRowset()).getRowsList()).build()
                                     }else if(r == "stream"){
                                         chats[chatId].receiveMessage = chats[chatId].otherData
                                         chats.remove(chatId)

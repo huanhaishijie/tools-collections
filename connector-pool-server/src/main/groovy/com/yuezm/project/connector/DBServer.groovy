@@ -109,8 +109,12 @@ class DBServer {
 
 
         // ==== rows ====
+        long index = 0
+        long batchSize = 1000
+
         while (rs.next()) {
             Row.Builder row = Row.newBuilder()
+            index++
 
             for (int i = 0; i < colCount; i++) {
                 int t = jdbcTypes[i]
@@ -175,9 +179,22 @@ class DBServer {
 
                 row.addValues(vb)
             }
+            rsBuilder.addRows(row)
+            if(index == batchSize){
+                index = 0
+                def res = currentResponse.get()
+                res = res.toBuilder().putData("res", "Rows").setRowset(rsBuilder.build().toByteString()).build()
+                Application.sendResponseInternal(res)
+                rsBuilder.clearRows()
+            }
+
+        }
+        if(index > 0 ){
+            index = 0
             def res = currentResponse.get()
-            res = res.toBuilder().putData("res", "Row").setRowset(row.build().toByteString()).build()
+            res = res.toBuilder().putData("res", "Rows").setRowset(rsBuilder.build().toByteString()).build()
             Application.sendResponseInternal(res)
+            rsBuilder.clearRows()
         }
     }
 

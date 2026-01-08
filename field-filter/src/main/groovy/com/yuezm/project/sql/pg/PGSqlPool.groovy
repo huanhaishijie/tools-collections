@@ -1,5 +1,6 @@
 package com.yuezm.project.sql.pg
 
+import com.yuezm.project.connector.proto.RowSet
 import com.yuezm.project.sql.DatasourceProperties
 import com.yuezm.project.sql.SqlPoolHandler
 import com.yuezm.project.sql.TableField
@@ -352,9 +353,14 @@ class PGSqlPool extends SqlPoolHandler {
 //""")
         def s = System.currentTimeMillis()
         println "search start time: $s"
-        def res = handler.rows("SELECT * FROM cccc")
+//        def res = handler.rows("SELECT * FROM cccc")
+        handler.query("SELECT * FROM cccc limit 1") { RowSet rs ->
+            println 1
+        }
         def e = System.currentTimeMillis()
+
         println "search end time: $e"
+//        println "res total:${res.size()} cost: ${(e - s)/1000} s"
         println "cost: ${(e - s)/1000} s"
 
     }

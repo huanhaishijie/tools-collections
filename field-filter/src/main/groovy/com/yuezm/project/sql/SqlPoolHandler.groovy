@@ -192,7 +192,7 @@ abstract class SqlPoolHandler extends SqlHandler{
         def responseFuture = new CompletableFuture<Object>()
         def latch = new CountDownLatch(1)
         client.send dataSourceInfo, { backInfo ->
-            println "Received response: ${backInfo?.newValue}"
+//            println "Received response: ${backInfo?.newValue}"
             responseFuture.complete(backInfo?.newValue)
             latch.countDown()
         }
@@ -658,9 +658,24 @@ abstract class SqlPoolHandler extends SqlHandler{
     }
 
     
-    @Deprecated
-    void query(String sql, Closure closure) {
-        throw new UnsupportedOperationException("pool rows not support Closure")
+
+    void query(String sql, Closure<RowSet> closure) {
+        def dataSourceInfo = DataSourceInfo.newBuilder().setExec(
+                ExecInfo.newBuilder().setRequestInfo(
+                        RequestInfo.newBuilder()
+                                .setReplyChannel("aeron:udp?endpoint=$PoolConfig.instance.clientHost:$PoolConfig.instance.clientPort".toString())
+                                .setReplyStream(PoolConfig.instance.clientSteamId)
+                                .build()
+                ).setMethod("execSql").build()
+        ).putOther("key", key)
+                .putOther("exec", "rows")
+                .putOther("sql", sql)
+                .build()
+        def res = sqlExec(dataSourceInfo)
+        if(res instanceof RowSet){
+            closure(res)
+        }
+
     }
 
     <R> R query(String sql, String execCode) {
