@@ -1,16 +1,14 @@
-package com.yuezm.project.connector
+package com.zz.datacenter
 
 import com.google.protobuf.ByteString
-import com.yuezm.project.connector.proto.ColumnMeta
-import com.yuezm.project.connector.proto.DataSourceInfo
-import com.yuezm.project.connector.proto.Decimal
-import com.yuezm.project.connector.proto.ExecInfo
-import com.yuezm.project.connector.proto.RequestInfo
-import com.yuezm.project.connector.proto.Response
-import com.yuezm.project.connector.proto.Row
-import com.yuezm.project.connector.proto.RowSet
-import com.yuezm.project.connector.proto.TimeVal
-import com.yuezm.project.connector.proto.Value
+import com.zz.datacenter.proto.ColumnMeta
+import com.zz.datacenter.proto.DataSourceInfo
+import com.zz.datacenter.proto.Decimal
+import com.zz.datacenter.proto.Response
+import com.zz.datacenter.proto.Row
+import com.zz.datacenter.proto.RowSet
+import com.zz.datacenter.proto.TimeVal
+import com.zz.datacenter.proto.Value
 import com.zaxxer.hikari.HikariDataSource
 import groovy.json.JsonGenerator
 import groovy.json.JsonSlurper

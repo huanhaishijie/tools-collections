@@ -1,9 +1,9 @@
-package com.yuezm.project.connector
+package com.zz.datacenter
 
-import com.yuezm.project.connector.proto.ChunkMessage
-import com.yuezm.project.connector.proto.DataSourceInfo
-import com.yuezm.project.connector.proto.Response
-import com.yuezm.project.connector.proto.RowSet
+import com.zz.datacenter.proto.ChunkMessage
+import com.zz.datacenter.proto.DataSourceInfo
+import com.zz.datacenter.proto.Response
+import com.zz.datacenter.proto.RowSet
 import groovyx.gpars.actor.Actors
 import io.aeron.Aeron
 import io.aeron.FragmentAssembler

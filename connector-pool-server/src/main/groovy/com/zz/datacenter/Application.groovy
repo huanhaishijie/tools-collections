@@ -1,8 +1,8 @@
-package com.yuezm.project.connector
+package com.zz.datacenter
 
 import com.google.protobuf.ByteString
-import com.yuezm.project.connector.proto.ChunkMessage
-import com.yuezm.project.connector.proto.DataSourceInfo
+import com.zz.datacenter.proto.ChunkMessage
+import com.zz.datacenter.proto.DataSourceInfo
 import groovyx.gpars.actor.Actors
 import io.aeron.Aeron
 import io.aeron.FragmentAssembler
@@ -15,7 +15,7 @@ import org.agrona.concurrent.BackoffIdleStrategy
 import org.agrona.concurrent.IdleStrategy
 import org.agrona.concurrent.NoOpIdleStrategy
 import org.agrona.concurrent.UnsafeBuffer
-import com.yuezm.project.connector.proto.Response
+import com.zz.datacenter.proto.Response
 
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicBoolean
