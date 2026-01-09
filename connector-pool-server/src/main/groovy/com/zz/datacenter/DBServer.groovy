@@ -1,34 +1,23 @@
 package com.zz.datacenter
 
 import com.google.protobuf.ByteString
-import com.zz.datacenter.proto.ColumnMeta
-import com.zz.datacenter.proto.DataSourceInfo
-import com.zz.datacenter.proto.Decimal
-import com.zz.datacenter.proto.Response
-import com.zz.datacenter.proto.Row
-import com.zz.datacenter.proto.RowSet
-import com.zz.datacenter.proto.TimeVal
-import com.zz.datacenter.proto.Value
+import com.yuezm.project.connector.proto.DataSourceInfo
+import com.yuezm.project.connector.proto.Response
+import com.yuezm.project.connector.proto.*
 import com.zaxxer.hikari.HikariDataSource
 import groovy.json.JsonGenerator
 import groovy.json.JsonSlurper
 import groovy.sql.Sql
 import groovy.util.logging.Slf4j
+import org.codehaus.groovy.control.CompilerConfiguration
 
 import javax.sql.DataSource
+import java.security.MessageDigest
 import java.sql.Connection
 import java.sql.ResultSet
 import java.sql.SQLException
+import java.sql.Statement
 import java.util.concurrent.ConcurrentHashMap
-
-/**
- * Server
- *
- * @author yzm
- * @version 1.0
- * @description ${TODO}
- * @date 2025/12/12 10:53
- */
 
 @Slf4j
 class DBServer {
@@ -48,220 +37,22 @@ class DBServer {
     private static final JsonGenerator JSON =
             new JsonGenerator.Options().disableUnicodeEscaping().build()
 
-
     /** 只缓存 DataSource（线程安全） */
     private static final Map<String, HikariDataSource> DATA_SOURCES =
-            new ConcurrentHashMap<>()
+            new ConcurrentHashMap<String, HikariDataSource>()
 
+    /* ======================== util ======================== */
 
     private static String calcKey(DataSourceInfo info) {
-        String link = "${info.getUrl()}:${info.getUsername()}:${info.getPassword()}"
-        return link.bytes.md5()
+        String link = info.url + ":" + info.username + ":" + info.password
+        MessageDigest md = MessageDigest.getInstance("MD5")
+        byte[] digest = md.digest(link.getBytes("UTF-8"))
+        return digest.encodeHex().toString()
     }
 
-    protected static void  shutdown(){
-        DATA_SOURCES.values().each { try {
-            it.close()
-        } catch (Exception e) {
-            log.warn("close datasource error", e)
-        } }
-    }
-
-
-
-    private static RowSet buildRowSetFast(ResultSet rs) {
-        def meta = rs.metaData
-        final int colCount = meta.columnCount
-
-        // ==== 预取列信息，避免循环中反复 JNI 调用 ====
-        int[] jdbcTypes = new int[colCount]
-        for (int i = 1; i <= colCount; i++) {
-            jdbcTypes[i - 1] = meta.getColumnType(i)
-        }
-
-        RowSet.Builder rsBuilder = RowSet.newBuilder()
-
-        // ==== columns ====
-        for (int i = 1; i <= colCount; i++) {
-            rsBuilder.addColumns(
-                    ColumnMeta.newBuilder()
-                            .setName(meta.getColumnLabel(i))
-                            .setJdbcType(jdbcTypes[i - 1])
-                            .setTypeName(meta.getColumnTypeName(i))
-            )
-        }
-
-        // ==== rows ====
-        while (rs.next()) {
-            Row.Builder row = Row.newBuilder()
-
-            for (int i = 0; i < colCount; i++) {
-                int t = jdbcTypes[i]
-
-                Value.Builder vb = Value.newBuilder()
-
-                switch (t) {
-                    case java.sql.Types.INTEGER:
-                    case java.sql.Types.SMALLINT:
-                    case java.sql.Types.TINYINT: {
-                        int v = rs.getInt(i + 1)
-                        if (rs.wasNull()) vb.setIsNull(true)
-                        else vb.setIntVal(v)
-                        break
-                    }
-                    case java.sql.Types.BIGINT: {
-                        long v = rs.getLong(i + 1)
-                        if (rs.wasNull()) vb.setIsNull(true)
-                        else vb.setLongVal(v)
-                        break
-                    }
-                    case java.sql.Types.FLOAT:
-                    case java.sql.Types.REAL:
-                    case java.sql.Types.DOUBLE: {
-                        double v = rs.getDouble(i + 1)
-                        if (rs.wasNull()) vb.setIsNull(true)
-                        else vb.setDoubleVal(v)
-                        break
-                    }
-                    case java.sql.Types.DECIMAL:
-                    case java.sql.Types.NUMERIC: {
-                        BigDecimal bd = rs.getBigDecimal(i + 1)
-                        if (bd == null) {
-                            vb.setIsNull(true)
-                        } else {
-                            // ⚠️ 性能关键：用 stringVal，避免 ByteString 拷贝
-                            vb.setStringVal(bd.toPlainString())
-                        }
-                        break
-                    }
-                    case java.sql.Types.TIMESTAMP:
-                    case java.sql.Types.DATE: {
-                        long ts = rs.getTimestamp(i + 1)?.time ?: -1L
-                        if (ts < 0) vb.setIsNull(true)
-                        else vb.setTimeVal(TimeVal.newBuilder().setEpochMillis(ts))
-                        break
-                    }
-                    case java.sql.Types.BINARY:
-                    case java.sql.Types.VARBINARY:
-                    case java.sql.Types.BLOB: {
-                        byte[] b = rs.getBytes(i + 1)
-                        if (b == null) vb.setIsNull(true)
-                        else vb.setBytesVal(ByteString.copyFrom(b))
-                        break
-                    }
-                    default: {
-                        String s = rs.getString(i + 1)
-                        if (s == null) vb.setIsNull(true)
-                        else vb.setStringVal(s)
-                    }
-                }
-
-                row.addValues(vb)
-            }
-
-            rsBuilder.addRows(row)
-        }
-
-        return rsBuilder.build()
-    }
-
-    private static RowSet buildRowSet(java.sql.ResultSet rs) {
-        def meta = rs.metaData
-        int colCount = meta.columnCount
-
-        RowSet.Builder rsBuilder = RowSet.newBuilder()
-
-        // ===== columns =====
-        for (int i = 1; i <= colCount; i++) {
-            rsBuilder.addColumns(
-                    ColumnMeta.newBuilder()
-                            .setName(meta.getColumnLabel(i))
-                            .setJdbcType(meta.getColumnType(i))
-                            .setTypeName(meta.getColumnTypeName(i))
-            )
-        }
-
-        // ===== rows =====
-        while (rs.next()) {
-            Row.Builder row = Row.newBuilder()
-
-            for (int i = 1; i <= colCount; i++) {
-                row.addValues(toValue(rs.getObject(i)))
-            }
-
-            rsBuilder.addRows(row)
-        }
-
-        return rsBuilder.build()
-    }
-
-
-    private static Value toValue(Object v) {
-        if (v == null) {
-            return Value.newBuilder().setIsNull(true).build()
-        }
-
-        switch (v) {
-            case Integer:
-            case Short:
-                return Value.newBuilder().setIntVal(v as int).build()
-
-            case Long:
-                return Value.newBuilder().setLongVal(v).build()
-
-            case Float:
-            case Double:
-                return Value.newBuilder().setDoubleVal(v as double).build()
-
-            case BigDecimal:
-                return Value.newBuilder()
-                        .setDecimalVal(
-                                Decimal.newBuilder()
-                                        .setUnscaled(
-                                                com.google.protobuf.ByteString.copyFrom(
-                                                        v.unscaledValue().toByteArray()
-                                                )
-                                        )
-                                        .setScale(v.scale())
-                        ).build()
-
-            case java.sql.Timestamp:
-            case java.util.Date:
-                return Value.newBuilder()
-                        .setTimeVal(
-                                TimeVal.newBuilder().setEpochMillis(v.time)
-                        ).build()
-
-            case byte[]:
-                return Value.newBuilder()
-                        .setBytesVal(
-                                com.google.protobuf.ByteString.copyFrom(v)
-                        ).build()
-
-            default:
-                return Value.newBuilder().setStringVal(v.toString()).build()
-        }
-    }
-
-
-
-    private static <T> T withSql(String key, Closure<T> action) {
-        HikariDataSource ds = DATA_SOURCES[key]
-        if (!ds) {
-            throw new IllegalStateException("no datasource for key=$key")
-        }
-
-        Sql sql = null
-        try {
-            sql = new Sql(ds as DataSource)
-            return action(sql)
-        } finally {
-            if (sql != null) {
-                try {
-                    sql.close()
-                } catch (ignored) {}
-            }
-        }
+    private static String getOther(DataSourceInfo info, String key) {
+        def v = info.otherMap?.get(key)
+        return v == null ? "" : v.toString()
     }
 
     private static Object parseParams(String paramsStr) {
@@ -273,44 +64,153 @@ class DBServer {
         }
     }
 
+    protected static void shutdown() {
+        DATA_SOURCES.values().each {
+            try { it.close() } catch (Exception ignored) {}
+        }
+    }
+
+    /* ======================== RowSet ======================== */
+
+    private static RowSet buildRowSetFast(ResultSet rs) {
+        def meta = rs.metaData
+        final int colCount = meta.columnCount
+
+        final int[] jdbcTypes = new int[colCount]
+        for (int i = 1; i <= colCount; i++) {
+            jdbcTypes[i - 1] = meta.getColumnType(i)
+        }
+
+        RowSet.Builder rsBuilder = RowSet.newBuilder()
+
+        for (int i = 1; i <= colCount; i++) {
+            rsBuilder.addColumns(
+                    ColumnMeta.newBuilder()
+                            .setName(meta.getColumnLabel(i))
+                            .setJdbcType(jdbcTypes[i - 1])
+                            .setTypeName(meta.getColumnTypeName(i))
+            )
+        }
+
+        while (rs.next()) {
+            Row.Builder row = Row.newBuilder()
+
+            for (int i = 0; i < colCount; i++) {
+                int t = jdbcTypes[i]
+                Value.Builder vb = Value.newBuilder()
+
+                switch (t) {
+                    case java.sql.Types.INTEGER:
+                    case java.sql.Types.SMALLINT:
+                    case java.sql.Types.TINYINT:
+                        int iv = rs.getInt(i + 1)
+                        if (rs.wasNull()) vb.setIsNull(true)
+                        else vb.setIntVal(iv)
+                        break
+
+                    case java.sql.Types.BIGINT:
+                        long lv = rs.getLong(i + 1)
+                        if (rs.wasNull()) vb.setIsNull(true)
+                        else vb.setLongVal(lv)
+                        break
+
+                    case java.sql.Types.FLOAT:
+                    case java.sql.Types.REAL:
+                    case java.sql.Types.DOUBLE:
+                        double dv = rs.getDouble(i + 1)
+                        if (rs.wasNull()) vb.setIsNull(true)
+                        else vb.setDoubleVal(dv)
+                        break
+
+                    case java.sql.Types.DECIMAL:
+                    case java.sql.Types.NUMERIC:
+                        BigDecimal bd = rs.getBigDecimal(i + 1)
+                        if (bd == null) vb.setIsNull(true)
+                        else vb.setStringVal(bd.toPlainString())
+                        break
+
+                    case java.sql.Types.TIMESTAMP:
+                    case java.sql.Types.DATE:
+                        java.sql.Timestamp ts = rs.getTimestamp(i + 1)
+                        if (ts == null) vb.setIsNull(true)
+                        else vb.setTimeVal(TimeVal.newBuilder().setEpochMillis(ts.time))
+                        break
+
+                    case java.sql.Types.BINARY:
+                    case java.sql.Types.VARBINARY:
+                    case java.sql.Types.BLOB:
+                        byte[] b = rs.getBytes(i + 1)
+                        if (b == null) vb.setIsNull(true)
+                        else vb.setBytesVal(ByteString.copyFrom(b))
+                        break
+
+                    default:
+                        String s = rs.getString(i + 1)
+                        if (s == null) vb.setIsNull(true)
+                        else vb.setStringVal(s)
+                }
+
+                row.addValues(vb)
+            }
+
+            rsBuilder.addRows(row)
+        }
+
+        return rsBuilder.build()
+    }
+
+    /* ======================== SQL ======================== */
+
+    private static <T> T withSql(String key, Closure<T> action) {
+        HikariDataSource ds = DATA_SOURCES.get(key)
+        if (ds == null) {
+            throw new IllegalStateException("no datasource for key=" + key)
+        }
+
+        Sql sql = null
+        try {
+            sql = new Sql(ds as DataSource)
+            return action.call(sql)
+        } finally {
+            try { sql?.close() } catch (Exception ignored) {}
+        }
+    }
+
+    /* ======================== API ======================== */
 
     Response registerDb(DataSourceInfo info) {
         String key = calcKey(info)
-        HikariDataSource ds = null
 
+        if (DATA_SOURCES.containsKey(key)) {
+            return Response.newBuilder()
+                    .setCode(OK_CODE)
+                    .setMessage(OK)
+                    .putData("res", key)
+                    .build()
+        }
+
+        HikariDataSource ds = new HikariDataSource()
         try {
-            if (DATA_SOURCES.containsKey(key)) {
-                return Response.newBuilder()
-                        .setCode(OK_CODE)
-                        .setMessage(OK)
-                        .putData("res", key)
-                        .build()
-            }
+            ds.setDriverClassName(info.type)
+            ds.setJdbcUrl(info.url)
+            ds.setUsername(info.username)
+            ds.setPassword(info.password)
 
-            ds = new HikariDataSource()
-            ds.setDriverClassName(info.getType())
-            ds.setJdbcUrl(info.getUrl())
-            ds.setUsername(info.getUsername())
-            ds.setPassword(info.getPassword())
+            if (info.maxPoolSize > 0) ds.setMaximumPoolSize(info.maxPoolSize)
+            if (info.minPoolSize > 0) ds.setMinimumIdle(info.minPoolSize)
+            if (info.idleTimeout > 0) ds.setIdleTimeout(info.idleTimeout)
+            if (info.connectionTimeout > 0) ds.setConnectionTimeout(info.connectionTimeout)
 
-            if (info.getMaxPoolSize() > 0) ds.setMaximumPoolSize(info.getMaxPoolSize())
-            if (info.getMinPoolSize() > 0) ds.setMinimumIdle(info.getMinPoolSize())
-            if (info.getIdleTimeout() > 0) ds.setIdleTimeout(info.getIdleTimeout())
-            if (info.getConnectionTimeout() > 0) ds.setConnectionTimeout(info.getConnectionTimeout())
-
-            // 连接池稳定性配置
-            ds.setLeakDetectionThreshold(60_000)
-            ds.setValidationTimeout(5_000)
+            ds.setLeakDetectionThreshold(60000)
+            ds.setValidationTimeout(5000)
             ds.setMaxLifetime(30 * 60 * 1000)
 
-            info.getOtherMap().forEach { k, v ->
-                ds.addDataSourceProperty(k, v)
+            info.otherMap?.each { k, v ->
+                ds.addDataSourceProperty(k.toString(), v)
             }
 
-            // ====== 关键：可用性校验 ======
             verifyDataSource(ds)
-
-            DATA_SOURCES[key] = ds
+            DATA_SOURCES.put(key, ds)
 
             return Response.newBuilder()
                     .setCode(OK_CODE)
@@ -319,15 +219,10 @@ class DBServer {
                     .build()
 
         } catch (Exception e) {
-            if (ds != null) {
-                try {
-                    ds.close()
-                } catch (ignored) {}
-            }
-
+            try { ds.close() } catch (Exception ignored) {}
             return Response.newBuilder()
                     .setCode(ERR_CODE)
-                    .setMessage("$ERR: ${e.message}")
+                    .setMessage(ERR + ": " + e.message)
                     .build()
         }
     }
@@ -336,146 +231,80 @@ class DBServer {
         Connection conn = null
         try {
             conn = ds.getConnection()
-
-            // JDBC 标准校验（推荐）
             if (!conn.isValid(3)) {
                 throw new SQLException("Connection validation failed")
             }
-
         } finally {
-            if (conn != null) {
-                conn.close()
-            }
+            try { conn?.close() } catch (Exception ignored) {}
         }
-    }
-
-    Response removeDb(DataSourceInfo info) {
-        String key = info.getOtherOrDefault("key", "")
-        if (!key) {
-            key = calcKey(info)
-        }
-
-        HikariDataSource ds = DATA_SOURCES.remove(key)
-        if (ds) {
-            try {
-                ds.close()
-            } catch (Exception e) {
-                log.warn("close datasource error", e)
-            }
-        }
-
-        return Response.newBuilder()
-                .setCode(OK_CODE)
-                .setMessage(OK)
-                .build()
     }
 
     Response execSql(DataSourceInfo info) {
-        String key = info.getOtherOrDefault("key", "")
-        if (!key) {
-            key = calcKey(info)
-        }
+        String key = getOther(info, "key")
+        if (!key) key = calcKey(info)
 
         if (!DATA_SOURCES.containsKey(key)) {
             return Response.newBuilder()
                     .setCode(ERR_CODE)
-                    .setMessage("$ERR: no datasource")
+                    .setMessage(ERR + ": no datasource")
                     .build()
         }
 
-        String sqlStr   = info.getOtherOrDefault("sql", "")
-        String exec     = info.getOtherOrDefault("exec", "")
-        String execPlus = info.getOtherOrDefault("execPlus", "")
-        String execCode = info.getOtherOrDefault("execCode", "")
-        Object params   = parseParams(info.getOtherOrDefault("params", ""))
+        String sqlStr = getOther(info, "sql")
+        String exec = getOther(info, "exec")
+        String execPlus = getOther(info, "execPlus")
+        String execCode = getOther(info, "execCode")
+        Object params = parseParams(getOther(info, "params"))
 
         try {
-            // ===== execPlus：直接返回 Response =====
             if (execPlus) {
                 return withSql(key) { Sql sql ->
                     execPlusInternal(sql, sqlStr, execCode, params)
                 }
             }
-            SqlParamUtil.ParsedSql p = null
-            if(params instanceof  Map){
-                p = SqlParamUtil.parse(sqlStr, params)
-            }
-            // ===== 普通 SQL 执行 =====
+
             Object result = withSql(key) { Sql sql ->
-                if (params instanceof Map) {
-                    switch (exec) {
-                        case "rows": {
-                            def r = null
-                            sql.withStatement { stmt ->
-                                stmt.fetchSize = 1000
-                            }
-                            sql.query(p.sql, p.params as Map) { ResultSet rs ->
-                                r = buildRowSetFast(rs)
-                            }
-                            return r
-                        }
-                        case "execute":  return sql.execute(params as Map, sqlStr)
-                        case "firstRow": return sql.firstRow(params as Map, sqlStr)
-                    }
-                } else if (params instanceof List) {
-                    switch (exec) {
-                        case "rows": {
-                            def r = null
-                            sql.withStatement { stmt ->
-                                stmt.fetchSize = 1000
-                            }
-                            sql.query(sqlStr, params as List) { ResultSet rs ->
-                                r = buildRowSetFast(rs)
-                            }
-                            return r
-                        }
-                        case "execute":  return sql.execute(sqlStr, params as List)
-                        case "firstRow": return sql.firstRow(sqlStr, params as List)
-                    }
-                } else {
-                    switch (exec) {
-                        case "rows": {
-                            def r = null
-                            sql.withStatement { stmt ->
-                                stmt.fetchSize = 1000
-                            }
-                            sql.query(sqlStr) { ResultSet rs ->
-                                r = buildRowSetFast(rs)
-                            }
-                            return r
-                        }
-                        case "execute":  return sql.execute(sqlStr)
-                        case "firstRow": return sql.firstRow(sqlStr)
+                if ("rows".equals(exec)) {
+                    Statement stmt = null
+                    ResultSet rs = null
+                    try {
+                        stmt = sql.connection.createStatement()
+                        stmt.fetchSize = 1000
+                        rs = stmt.executeQuery(sqlStr)
+                        return buildRowSetFast(rs)
+                    } finally {
+                        try { rs?.close() } catch (Exception ignored) {}
+                        try { stmt?.close() } catch (Exception ignored) {}
                     }
                 }
+                if ("execute".equals(exec)) return sql.execute(sqlStr)
+                if ("firstRow".equals(exec)) return sql.firstRow(sqlStr)
                 return null
             }
-            def builder = Response.newBuilder()
+
+            Response.Builder rb = Response.newBuilder()
                     .setCode(OK_CODE)
                     .setMessage(OK)
+
             if (result != null) {
-                if(exec == "rows"){
-                    builder.putData("res", "rowset")
-                    builder.setRowset((result as RowSet).toByteString())
-                }else {
-                    builder.putData("res", JSON.toJson(result))
+                if ("rows".equals(exec)) {
+                    rb.putData("res", "rowset")
+                    rb.setRowset((result as RowSet).toByteString())
+                } else {
+                    rb.putData("res", JSON.toJson(result))
                 }
             }
-
-            return builder.build()
+            return rb.build()
 
         } catch (Exception e) {
-            e.printStackTrace()
             return Response.newBuilder()
                     .setCode(ERR_CODE)
-                    .setMessage("$ERR: ${e.message}")
+                    .setMessage(ERR + ": " + e.message)
                     .build()
         }
     }
 
-    private static Response execPlusInternal(
-            Sql sql, String sqlStr, String execCode, Object params) {
-
+    private static Response execPlusInternal(Sql sql, String sqlStr, String execCode, Object params) {
         try {
             Binding binding = new Binding()
             binding.setVariable("sqlHandler", sql)
@@ -483,35 +312,25 @@ class DBServer {
             binding.setVariable("JSON", JSON)
             binding.setVariable("log", log)
 
-            if (params instanceof Map) {
-                binding.variables.putAll(params as Map)
-            } else if (params instanceof List) {
-                binding.setVariable("args", params)
-            } else if (params != null) {
-                binding.setVariable("args", [params])
-            }
+            if (params instanceof Map) binding.variables.putAll(params as Map)
+            else if (params instanceof List) binding.setVariable("args", params)
+            else if (params != null) binding.setVariable("args", [params])
 
-            def shell = new GroovyShell(binding)
-            println "execCode: $execCode"
-            def result = shell.evaluate(execCode)
+            CompilerConfiguration cc = new CompilerConfiguration()
+            GroovyShell shell = new GroovyShell(DBServer.class.classLoader, binding, cc)
+            Object result = shell.evaluate(execCode)
 
-
-            def builder = Response.newBuilder()
+            Response.Builder rb = Response.newBuilder()
                     .setCode(OK_CODE)
                     .setMessage(OK)
 
-            if (result != null) {
-                builder.putData("res", JSON.toJson(result))
-            }
-
-            return builder.build()
+            if (result != null) rb.putData("res", JSON.toJson(result))
+            return rb.build()
 
         } catch (Exception e) {
-            e.printStackTrace()
-            log.error("execPlusInternal error", e)
             return Response.newBuilder()
                     .setCode(ERR_CODE)
-                    .setMessage("$ERR: ${e.message}")
+                    .setMessage(ERR + ": " + e.message)
                     .build()
         }
     }
@@ -519,49 +338,53 @@ class DBServer {
     Response handle(byte[] bytes) {
         try {
             DataSourceInfo info = DataSourceInfo.parseFrom(bytes)
-            String method = info.hasExec() ? info.getExec().getMethod() : ""
+            String method = info.hasExec() ? info.exec.method : ""
 
-            return switch (method) {
-                case "registerDb" -> registerDb(info)
-                case "removeDb" -> removeDb(info)
-                case "execSql" -> execSql(info)
-                case "verifyDb" -> verifyDb(info)
-                default -> Response.newBuilder()
-                        .setCode(UNSUPPORTED_METHOD_CODE)
-                        .setMessage(UNSUPPORTED_METHOD)
-                        .build()
+            switch (method) {
+                case "registerDb": return registerDb(info)
+                case "removeDb":   return removeDb(info)
+                case "execSql":    return execSql(info)
+                case "verifyDb":   return verifyDb(info)
+                default:
+                    return Response.newBuilder()
+                            .setCode(UNSUPPORTED_METHOD_CODE)
+                            .setMessage(UNSUPPORTED_METHOD)
+                            .build()
             }
-
         } catch (Exception e) {
             return Response.newBuilder()
                     .setCode(INVALID_MESSAGE_CODE)
-                    .setMessage("$INVALID_MESSAGE: ${e.message}")
+                    .setMessage(INVALID_MESSAGE + ": " + e.message)
                     .build()
         }
     }
 
-    /**
-     * 校验是否可用
-     * @param dataSourceInfo
-     * @return
-     */
-    Response verifyDb(DataSourceInfo dataSourceInfo) {
-        String key = calcKey(dataSourceInfo)
-        def ds = DATA_SOURCES[key]
-        try {
-            verifyDataSource(ds)
-        }catch (Exception e){
-            return Response.newBuilder()
-                    .setCode(ERR_CODE)
-                    .setMessage("$ERR: ${e.message}")
-                    .build()
-        }
+    Response removeDb(DataSourceInfo info) {
+        String key = getOther(info, "key")
+        if (!key) key = calcKey(info)
+
+        HikariDataSource ds = DATA_SOURCES.remove(key)
+        try { ds?.close() } catch (Exception ignored) {}
+
         return Response.newBuilder()
                 .setCode(OK_CODE)
-                .setMessage("$OK: success")
-                .putData("res", "true")
+                .setMessage(OK)
                 .build()
     }
+
+    Response verifyDb(DataSourceInfo info) {
+        try {
+            verifyDataSource(DATA_SOURCES.get(calcKey(info)))
+            return Response.newBuilder()
+                    .setCode(OK_CODE)
+                    .setMessage(OK)
+                    .putData("res", "true")
+                    .build()
+        } catch (Exception e) {
+            return Response.newBuilder()
+                    .setCode(ERR_CODE)
+                    .setMessage(ERR + ": " + e.message)
+                    .build()
+        }
+    }
 }
-
-

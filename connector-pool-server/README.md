@@ -1,8 +1,8 @@
 # 🚀 数据库连接池服务器 (Database Connection Pool Server)
 
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
-[![Java](https://img.shields.io/badge/Java-21%2B-orange)](https://www.oracle.com/java/technologies/javase/jdk21-archive-downloads.html)
-[![Gradle](https://img.shields.io/badge/Gradle-8.12%2B-02303A.svg?logo=gradle)](https://gradle.org/)
+[![Java](https://img.shields.io/badge/Java-8%2B-orange)](https://www.oracle.com/java/technologies/javase/jdk21-archive-downloads.html)
+[![Gradle](https://img.shields.io/badge/Gradle-8.7%2B-02303A.svg?logo=gradle)](https://gradle.org/)
 
 ## 📋 目录
 
@@ -28,4 +28,4 @@
 
 数据库连接池服务器是一个高性能的数据库连接管理中间件，基于 Aeron 框架实现，通过 UDP 协议提供低延迟、高并发的数据库连接管理服务。该服务抽象了数据库连接管理，使应用程序可以通过简单的 API 调用来执行数据库操作，而无需关心底层连接管理细节。
 
-该版本是从1.0.0私人定制版本，没有致命缺陷后面不在维护
+该版本是从1.0.0私人定制版本，没有致命缺陷后续不在维护

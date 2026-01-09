@@ -1,8 +1,6 @@
 package com.zz.datacenter
 
 import com.google.protobuf.ByteString
-import com.zz.datacenter.proto.ChunkMessage
-import com.zz.datacenter.proto.DataSourceInfo
 import groovyx.gpars.actor.Actors
 import io.aeron.Aeron
 import io.aeron.FragmentAssembler
@@ -15,7 +13,7 @@ import org.agrona.concurrent.BackoffIdleStrategy
 import org.agrona.concurrent.IdleStrategy
 import org.agrona.concurrent.NoOpIdleStrategy
 import org.agrona.concurrent.UnsafeBuffer
-import com.zz.datacenter.proto.Response
+import com.yuezm.project.connector.proto.*
 
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicBoolean
@@ -44,8 +42,11 @@ class Application {
     private static Aeron aeron
     private static Subscription sub
     private static DBServer server
+    private static final int CPU_COUNT =
+            Runtime.runtime.availableProcessors()
+
     private static final int WORKER_COUNT =
-            Math.max(2, Runtime.runtime.availableProcessors() / 2)
+            Math.max(2.0f, CPU_COUNT / 2) as int
     private static List workers = []
     private static final AtomicInteger rr = new AtomicInteger(0)
     private static def responseSender

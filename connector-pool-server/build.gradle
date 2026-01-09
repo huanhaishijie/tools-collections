@@ -3,78 +3,83 @@ plugins {
     id 'groovy'
     id 'com.google.protobuf' version '0.9.5'
     id 'application'
+    id 'maven-publish'
 }
 
-group='com.yuezm.project.connector'
-version='1.0.1'
+group = 'com.yuezm.project.connector'
+version = '1.0.0'
 
 repositories {
     mavenCentral()
     mavenLocal()
 }
 
+/**
+ * Java 8 明确锁定
+ */
 java {
     toolchain {
-        languageVersion = JavaLanguageVersion.of(21)
+        languageVersion = JavaLanguageVersion.of(8)
     }
+    withSourcesJar()
 }
 
-application {
-    mainClass = 'com.yuezm.project.connector.Application'
-    applicationDefaultJvmArgs = [
-            '--enable-preview',
-            '--add-opens', 'java.base/sun.nio.ch=ALL-UNNAMED',
-            '--add-opens', 'java.base/java.nio=ALL-UNNAMED',
-            '--add-opens', 'java.base/java.util=ALL-UNNAMED',
-            '--add-exports', 'java.base/sun.nio.ch=ALL-UNNAMED',
-            '--add-exports', 'java.base/sun.security.provider=ALL-UNNAMED',
-            '--illegal-access=permit'
-    ]
-}
-
+/**
+ * 编译级别锁定 Java 8
+ */
 compileJava {
     options.encoding = 'UTF-8'
-    options.compilerArgs += ['--enable-preview']
+    sourceCompatibility = '1.8'
+    targetCompatibility = '1.8'
 }
 
 compileGroovy {
     groovyOptions.encoding = 'UTF-8'
-    groovyOptions.javaAnnotationProcessing = true
-    options.compilerArgs += ['--enable-preview']
+    sourceCompatibility = '1.8'
+    targetCompatibility = '1.8'
 }
 
-tasks.withType(JavaExec) {
-    jvmArgs += "--add-opens=java.base/sun.nio.ch=ALL-UNNAMED"
+/**
+ * 应用入口（如只是库，可删 application 块）
+ */
+application {
+    mainClassName = 'com.zz.datacenter.Application'
 }
 
 dependencies {
-    // Groovy
-    implementation 'org.apache.groovy:groovy:5.0.0'
-    implementation 'org.apache.groovy:groovy-sql:5.0.0'
-    implementation 'org.apache.groovy:groovy-json:5.0.0'
+
+    /* ================= Groovy（Java 8 专用，与你参考一致） ================= */
+
+    // 只在编译期使用 Groovy（避免运行期冲突）
+    implementation 'org.codehaus.groovy:groovy:3.0.10'
+    implementation 'org.codehaus.groovy:groovy-all:3.0.10'
+    implementation 'org.codehaus.groovy:groovy-json:3.0.10'
+
+    // 并发（Java 8 + Groovy 3 稳定）
     implementation 'org.codehaus.gpars:gpars:1.2.1'
 
-    // 数据库驱动
+    /* ================= Protobuf ================= */
+
+    implementation 'com.google.protobuf:protobuf-java:3.24.4'
+
+    /* ================= Aeron（Java 8 验证稳定组合） ================= */
+
+    implementation 'io.aeron:aeron-all:1.40.0'
+    implementation 'org.agrona:agrona:1.17.1'
+
+
+    implementation 'com.zaxxer:HikariCP:4.0.3' // Java 8 稳定版
+
     implementation 'org.postgresql:postgresql:42.5.4'
     implementation 'com.oracle.database.jdbc:ojdbc8:21.10.0.0'
     implementation 'mysql:mysql-connector-java:8.0.28'
     implementation 'dm.jdbc:dm-driver:8.1.2.141'
 
-    // Protobuf
-    implementation "com.google.protobuf:protobuf-java:3.24.4"
+    /* ================= 注解 ================= */
 
-    // Aeron
-    implementation "io.aeron:aeron-all:1.45.0"
-    implementation "org.agrona:agrona:1.23.0"
-
-    // 数据源连接池
-    implementation 'com.zaxxer:HikariCP:6.3.0'
-
-    // 注解
-    implementation 'jakarta.annotation:jakarta.annotation-api:2.1.1'
     implementation 'javax.annotation:javax.annotation-api:1.3.2'
+    /* ================= 测试 ================= */
 
-    // 测试
     testImplementation platform('org.junit:junit-bom:5.10.0')
     testImplementation 'org.junit.jupiter:junit-jupiter'
 }
@@ -83,29 +88,55 @@ test {
     useJUnitPlatform()
 }
 
-// 在编译 Groovy 代码前生成 proto
-tasks.named('compileGroovy') {
-    dependsOn tasks.named('generateProto')
-}
-
-protobuf {
-    protoc {
-        artifact = "com.google.protobuf:protoc:3.24.4"
-    }
-    generateProtoTasks {
-        all().each { task ->
-            task.plugins { /* 不加 grpc */ }
+/**
+ * proto 文件位置（按你给的路径）
+ */
+sourceSets {
+    main {
+        proto {
+            srcDir 'src/main/groovy/proto'
         }
     }
 }
 
-// 打包可执行 jar
-jar {
-    manifest {
-        attributes('Main-Class': 'com.yuezm.project.connector.Application')
+/**
+ * Protobuf 生成配置
+ */
+protobuf {
+    protoc {
+        artifact = "com.google.protobuf:protoc:3.24.4"
     }
-    from {
-        configurations.runtimeClasspath.collect { it.isDirectory() ? it : zipTree(it) }
+
+    generatedFilesBaseDir = "$projectDir/generated"
+
+    generateProtoTasks {
+        all().each { task ->
+            task.builtins {
+                java {
+                    option 'lite'
+                }
+            }
+        }
     }
-    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+}
+
+/**
+ * Groovy 编译前先生成 proto
+ */
+tasks.named('compileGroovy') {
+    dependsOn tasks.named('generateProto')
+}
+
+/**
+ * 发布到 Maven
+ */
+publishing {
+    publications {
+        mavenJava(MavenPublication) {
+            from components.java
+            groupId = 'com.yuezm.project.connector'
+            artifactId = 'connector-pool-client'
+            version = '1.0.0'
+        }
+    }
 }
