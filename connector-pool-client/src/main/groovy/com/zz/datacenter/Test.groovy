@@ -1,8 +1,6 @@
 package com.zz.datacenter
 
-import com.zz.datacenter.proto.DataSourceInfo
-import com.zz.datacenter.proto.ExecInfo
-import com.zz.datacenter.proto.RequestInfo
+import com.yuezm.project.connector.proto.*
 
 
 /**
