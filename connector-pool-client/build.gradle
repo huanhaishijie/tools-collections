@@ -1,0 +1,90 @@
+plugins {
+    id 'java'
+    id 'groovy'
+    id 'com.google.protobuf' version '0.9.5'
+    id 'application'
+    id 'maven-publish'
+}
+
+group = 'com.yuezm.project.connector'
+version = '1.0.0'
+
+repositories {
+    mavenCentral()
+    mavenLocal()
+}
+
+//tasks.withType(JavaExec) {
+//    jvmArgs += "--add-opens=java.base/sun.nio.ch=ALL-UNNAMED"
+//}
+
+dependencies {
+    // Groovy
+//    implementation 'org.apache.groovy:groovy:4.0.13'
+//    implementation 'org.apache.groovy:groovy-all:4.0.13'
+//    implementation 'org.apache.groovy:groovy-json:4.0.13'
+    compileOnly  'org.codehaus.groovy:groovy:3.0.10'
+    compileOnly  'org.codehaus.groovy:groovy-all:3.0.10'
+    compileOnly  'org.codehaus.groovy:groovy-json:3.0.10'
+    // GPars for Groovy concurrency
+    implementation 'org.codehaus.gpars:gpars:1.2.1'
+
+    // Protobuf
+    implementation "com.google.protobuf:protobuf-java:3.24.4"
+
+    // Aeron (使用兼容 Java 8 的版本)
+    implementation "io.aeron:aeron-all:1.40.0"
+    implementation "org.agrona:agrona:1.17.1"
+    testImplementation platform('org.junit:junit-bom:5.10.0')
+    testImplementation 'org.junit.jupiter:junit-jupiter'
+}
+
+test {
+    useJUnitPlatform()
+}
+sourceSets {
+    main {
+        proto {
+            // 指定 proto 文件的位置
+            srcDir 'src/main/groovy/proto'
+        }
+    }
+}
+
+protobuf {
+    protoc {
+        artifact = "com.google.protobuf:protoc:3.24.4"
+    }
+    
+    // 指定生成文件的目录
+    generatedFilesBaseDir = "$projectDir/generated"
+    
+    generateProtoTasks {
+        all().each { task ->
+            task.builtins {
+                java {
+                    // 指定生成 Java 代码
+                    option 'lite'
+                }
+            }
+        }
+    }
+}
+
+// 确保在编译前先生成 proto 代码
+compileGroovy.dependsOn generateProto
+
+publishing {
+    publications {
+        mavenJava(MavenPublication) {
+            from components.java
+            groupId = 'com.yuezm.project.connector'
+            artifactId = 'connector-pool-client'
+            version = '1.0.0'
+        }
+    }
+}
+
+java {
+    withSourcesJar()
+}
