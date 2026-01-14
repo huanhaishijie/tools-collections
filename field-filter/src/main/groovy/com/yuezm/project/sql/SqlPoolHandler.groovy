@@ -702,9 +702,24 @@ abstract class SqlPoolHandler extends SqlHandler{
 
 
     
-    @Deprecated
-    void query(String sql, List<Object> params, Closure closure) {
-        throw new UnsupportedOperationException("pool rows not support Closure")
+
+    void query(String sql, List<Object> params, Closure<RowSet> closure) {
+        def dataSourceInfo = DataSourceInfo.newBuilder().setExec(
+                ExecInfo.newBuilder().setRequestInfo(
+                        RequestInfo.newBuilder()
+                                .setReplyChannel("aeron:udp?endpoint=$PoolConfig.instance.clientHost:$PoolConfig.instance.clientPort".toString())
+                                .setReplyStream(PoolConfig.instance.clientSteamId)
+                                .build()
+                ).setMethod("execSql").build()
+        ).putOther("key", key)
+                .putOther("exec", "rows")
+                .putOther("params", JSON.toJson(params))
+                .putOther("sql", sql)
+                .build()
+        def res = sqlExec(dataSourceInfo)
+        if(res instanceof RowSet){
+            closure(res)
+        }
     }
 
     <R> R query(String sql, List<Object> params, String execCode) {
@@ -730,9 +745,24 @@ abstract class SqlPoolHandler extends SqlHandler{
     }
 
     
-    @Deprecated
-    void query(String sql, Map map, Closure closure) {
-        throw new UnsupportedOperationException("pool rows not support Closure")
+
+    void query(String sql, Map map, Closure<RowSet> closure) {
+        def dataSourceInfo = DataSourceInfo.newBuilder().setExec(
+                ExecInfo.newBuilder().setRequestInfo(
+                        RequestInfo.newBuilder()
+                                .setReplyChannel("aeron:udp?endpoint=$PoolConfig.instance.clientHost:$PoolConfig.instance.clientPort".toString())
+                                .setReplyStream(PoolConfig.instance.clientSteamId)
+                                .build()
+                ).setMethod("execSql").build()
+        ).putOther("key", key)
+                .putOther("exec", "rows")
+                .putOther("params", JSON.toJson(map))
+                .putOther("sql", sql)
+                .build()
+        def res = sqlExec(dataSourceInfo)
+        if(res instanceof RowSet){
+            closure(res)
+        }
     }
 
 
@@ -759,9 +789,24 @@ abstract class SqlPoolHandler extends SqlHandler{
     }
 
     
-    @Deprecated
-    void query(Map map, String sql, Closure closure) {
-        throw new UnsupportedOperationException("pool rows not support Closure")
+
+    void query(Map map, String sql, Closure<RowSet> closure) {
+        def dataSourceInfo = DataSourceInfo.newBuilder().setExec(
+                ExecInfo.newBuilder().setRequestInfo(
+                        RequestInfo.newBuilder()
+                                .setReplyChannel("aeron:udp?endpoint=$PoolConfig.instance.clientHost:$PoolConfig.instance.clientPort".toString())
+                                .setReplyStream(PoolConfig.instance.clientSteamId)
+                                .build()
+                ).setMethod("execSql").build()
+        ).putOther("key", key)
+                .putOther("exec", "rows")
+                .putOther("params", JSON.toJson(map))
+                .putOther("sql", sql)
+                .build()
+        def res = sqlExec(dataSourceInfo)
+        if(res instanceof RowSet){
+            closure(res)
+        }
     }
 
     <R> R query(Map map, String sql, String execCode) {
@@ -788,9 +833,9 @@ abstract class SqlPoolHandler extends SqlHandler{
 
 
     
-    @Deprecated
-    void query(GString gstring, Closure closure) {
-        throw new UnsupportedOperationException("pool rows not support Closure")
+
+    void query(GString gstring, Closure<RowSet> closure) {
+        query(gstring.toString(), closure)
     }
 
 
