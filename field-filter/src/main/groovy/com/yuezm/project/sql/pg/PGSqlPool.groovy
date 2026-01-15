@@ -1,7 +1,7 @@
 package com.yuezm.project.sql.pg
 
+import com.yuezm.project.connector.proto.RowSet
 import com.yuezm.project.sql.DatasourceProperties
-import com.yuezm.project.sql.PoolConfig
 import com.yuezm.project.sql.SqlPoolHandler
 import com.yuezm.project.sql.TableField
 import com.yuezm.project.sql.TableInfo
@@ -17,9 +17,9 @@ import com.yuezm.project.sql.Wrapper
  * @description ${TODO}
  * @date 2025/12/24 11:20
  */
-class PGSqlPoolHandler extends SqlPoolHandler {
+class PGSqlPool extends SqlPoolHandler {
 
-    PGSqlPoolHandler(DatasourceProperties datasourceProperties, Map<String, Object> otherPoolConfig = [:]) {
+    PGSqlPool(DatasourceProperties datasourceProperties, Map<String, Object> otherPoolConfig = [:]) {
         super(datasourceProperties, otherPoolConfig)
     }
 
@@ -288,7 +288,7 @@ class PGSqlPoolHandler extends SqlPoolHandler {
          *  创建实例会自动向服务端注册数据源，如果服务端这个数据被注册了，
          *  服务端不会重新注册数据源，会直接返回key,key会保存在handler中
          */
-        def handler = new PGSqlPoolHandler(properties)
+        def handler = new PGSqlPool(properties)
         /**
          * 3.使用handler执行sql
          */
@@ -353,9 +353,14 @@ class PGSqlPoolHandler extends SqlPoolHandler {
 //""")
         def s = System.currentTimeMillis()
         println "search start time: $s"
-        def res = handler.rows("SELECT * FROM cccc")
+//        def res = handler.rows("SELECT * FROM cccc")
+        handler.query("SELECT * FROM cccc limit 1") { RowSet rs ->
+            println 1
+        }
         def e = System.currentTimeMillis()
+
         println "search end time: $e"
+//        println "res total:${res.size()} cost: ${(e - s)/1000} s"
         println "cost: ${(e - s)/1000} s"
 
     }

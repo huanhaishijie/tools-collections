@@ -51,7 +51,7 @@
         <dependency>
             <groupId>com.zaxxer</groupId>
             <artifactId>HikariCP</artifactId>
-            <version>5.0.1</version>
+            <version>4.0.3</version>
         </dependency>
         <!-- MySQL JDBC Driver -->
         <dependency>
@@ -94,6 +94,14 @@
             <artifactId>protobuf-java</artifactId>
             <version>3.24.4</version>
         </dependency>
+
+
+        <dependency>
+            <groupId>org.postgresql</groupId>
+            <artifactId>postgresql</artifactId>
+            <version>42.5.4</version>
+        </dependency>
+
 
 
     </dependencies>

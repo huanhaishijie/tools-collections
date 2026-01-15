@@ -192,7 +192,7 @@ abstract class SqlPoolHandler extends SqlHandler{
         def responseFuture = new CompletableFuture<Object>()
         def latch = new CountDownLatch(1)
         client.send dataSourceInfo, { backInfo ->
-            println "Received response: ${backInfo?.newValue}"
+//            println "Received response: ${backInfo?.newValue}"
             responseFuture.complete(backInfo?.newValue)
             latch.countDown()
         }
