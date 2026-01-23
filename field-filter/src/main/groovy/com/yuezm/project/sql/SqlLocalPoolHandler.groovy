@@ -1,8 +1,10 @@
 package com.yuezm.project.sql
 
 import com.zaxxer.hikari.HikariDataSource
+import com.zaxxer.hikari.HikariPoolMXBean
 import groovy.sql.GroovyRowResult
 import groovy.sql.Sql
+import groovy.util.logging.Slf4j
 
 import javax.sql.DataSource
 import java.sql.Connection
@@ -19,6 +21,8 @@ import java.util.concurrent.ConcurrentMap
  * @description ${TODO}
  * @date 2025/12/22 10:05
  */
+
+@Slf4j
 abstract class SqlLocalPoolHandler extends SqlHandler{
 
     protected Map<String, Object> prop
@@ -366,7 +370,7 @@ abstract class SqlLocalPoolHandler extends SqlHandler{
     }
 
     
-    boolean execute(String sql) {
+    boolean execute(String sql) throws SQLException {
         return withSql(key, {Sql s -> s.execute(sql)})
     }
 
@@ -492,13 +496,102 @@ abstract class SqlLocalPoolHandler extends SqlHandler{
 
 
     void close() {
-        def ds = cacheDataSource.remove(key)
+        def ds = cacheDataSource.remove(key) as HikariDataSource
         if (ds) {
             try {
                 ds.close()
             } catch (Exception e) {
-                println "close datasource error ${e}"
+                log.error "close datasource error ${e}"
             }
         }
+    }
+    /**
+     * 获取连接池监控信息
+     * @return 连接池状态信息
+     */
+    Map<String, Object> getPoolStatus() {
+        HikariDataSource ds = cacheDataSource[key]
+        if (!ds) {
+            return [error: "no datasource for key=$key"]
+        }
+
+        try {
+            // 使用你之前的方法：通过 getHikariPoolMXBean() 获取监控信息
+            HikariPoolMXBean mx = ds.getHikariPoolMXBean()
+            if (mx) {
+                return [
+                    poolName: ds.getPoolName(),
+                    totalConnections: mx.getTotalConnections(),
+                    activeConnections: mx.getActiveConnections(),
+                    idleConnections: mx.getIdleConnections(),
+                    waitingThreads: mx.getThreadsAwaitingConnection(),
+                    maxPoolSize: ds.getMaximumPoolSize(),
+                    minIdle: ds.getMinimumIdle(),
+                    isClosed: ds.isClosed()
+                ]
+            } else {
+                // 如果 getHikariPoolMXBean() 返回 null，显示基本配置信息
+                return [
+                    poolName: ds.getPoolName(),
+                    maxPoolSize: ds.getMaximumPoolSize(),
+                    minIdle: ds.getMinimumIdle(),
+                    connectionTimeout: ds.getConnectionTimeout(),
+                    idleTimeout: ds.getIdleTimeout(),
+                    maxLifetime: ds.getMaxLifetime(),
+                    note: "连接池监控不可用"
+                ]
+            }
+        } catch (Exception e) {
+            // 异常时显示基本配置信息
+            return [
+                poolName: ds.getPoolName(),
+                maxPoolSize: ds.getMaximumPoolSize(),
+                minIdle: ds.getMinimumIdle(),
+                error: "监控获取失败: ${e.message}"
+            ]
+        }
+    }
+
+    /**
+     * 打印连接池状态
+     */
+    void printPoolStatus() {
+        def status = getPoolStatus()
+        log.info "=== Connection Pool Status ==="
+        if (status.error) {
+            log.error "❌ Error: ${status.error}"
+        } else {
+            log.info "🏊 Pool Name: ${status.poolName}"
+            
+            if (status.containsKey('totalConnections')) {
+                // 完整的连接池统计信息
+                log.info "📊 Connection Statistics:"
+                log.info "   Total Connections: ${status.totalConnections} / ${status.maxPoolSize}"
+                log.info "   Active Connections: ${status.activeConnections} 🔥"
+                log.info "   Idle Connections: ${status.idleConnections} 💤"
+                log.info "   Waiting Threads: ${status.waitingThreads} ⏳"
+                
+                // 计算使用率
+                def usageRate = (status.activeConnections * 100 / status.maxPoolSize).round(1)
+                def totalUsageRate = (status.totalConnections * 100 / status.maxPoolSize).round(1)
+                log.info "   Pool Usage: ${usageRate}% (active), ${totalUsageRate}% (total)"
+            } else {
+                // 基本配置信息
+                log.info "⚙️  Pool Configuration:"
+                log.info "   Max Pool Size: ${status.maxPoolSize}"
+                log.info "   Min Idle: ${status.minIdle}"
+                log.info "   Connection Timeout: ${status.connectionTimeout}ms"
+                log.info "   Idle Timeout: ${status.idleTimeout}ms"
+                log.info "   Max Lifetime: ${status.maxLifetime}ms"
+                if (status.note) {
+                    log.warn "   ⚠️  ${status.note}"
+                }
+            }
+            
+            if (status.isClosed != null) {
+                log.info "   Status: ${status.isClosed ? '🔴 Closed' : '🟢 Active'}"
+            }
+        }
+        log.info "==============================="
     }
 }

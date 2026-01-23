@@ -25,7 +25,7 @@ class MysqlLocalPool extends SqlLocalPoolHandler{
 
 
     @Override
-    Number getTableDataCapacity(String tableName, String schema) {
+    Number getTableDataCapacity(String tableName, String schema = null) {
         String sql = "SELECT " +
                 "    ROUND((data_length + index_length) , 2) AS `total` " +
                 "FROM information_schema.TABLES " +
@@ -168,7 +168,7 @@ class MysqlLocalPool extends SqlLocalPoolHandler{
     }
 
     @Override
-    List<Map<String, Object>> getTablePrimarys(String tableName, String schema) {
+    List<Map<String, Object>> getTablePrimarys(String tableName, String schema = null) {
         String sql ="SELECT\n" +
                 "    COLUMN_NAME \n" +
                 "FROM information_schema.KEY_COLUMN_USAGE\n" +
@@ -180,7 +180,7 @@ class MysqlLocalPool extends SqlLocalPoolHandler{
     }
 
     @Override
-    TableInfo getTableInfo(String tableName, String schema) {
+    TableInfo getTableInfo(String tableName, String schema = null) {
         String sql = "select TABLE_SCHEMA,TABLE_COMMENT from information_schema.TABLES  where TABLE_NAME = '$tableName' and TABLE_SCHEMA = '$schema'"
         def tableInfo = firstRow(sql)
         if(tableInfo == null){

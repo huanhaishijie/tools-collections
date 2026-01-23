@@ -275,40 +275,52 @@ class PGSqlLocalPool extends SqlLocalPoolHandler{
                 password: "skzz@2023",
                 driverClassName: "org.postgresql.Driver")
 
-        def handler = new PGSqlLocalPool(properties, [minPoolSize:10, maxPoolSize:20])
-        20.times {
-            Thread.start {
-                handler = new PGSqlLocalPool(properties, [minPoolSize:10, maxPoolSize:20])
-
+        def handler = new PGSqlLocalPool(properties, [maxPoolSize: 20, minPoolSize: 10])
+        
+        println "=== 初始连接池状态 ==="
+        handler.printPoolStatus()
+        
+        println "开始并发测试..."
+        def threads = []
+        20.times { i ->
+            def thread = Thread.start {
                 def s = System.currentTimeMillis()
-                println "search start time: $s"
-                handler.rows("SELECT * FROM cccc")
+                println "Thread ${Thread.currentThread().getName()} search start time: $s"
+                
+                try {
+                    def results = handler.rows("SELECT * FROM cccc")
+                    println "Thread ${Thread.currentThread().getName()} 查询到 ${results.size()} 条记录"
+                } catch (Exception e) {
+                    println "Thread ${Thread.currentThread().getName()} 查询失败: ${e.message}"
+                }
+                
                 def e = System.currentTimeMillis()
-
-                println "search end time: $e"
+                println "Thread ${Thread.currentThread().getName()} search end time: $e"
                 println "${Thread.currentThread().getName()}-cost: ${(e - s)/1000} s"
+                
+                // 每个线程执行完后打印一次状态
+                handler.printPoolStatus()
             }
+            threads << thread
         }
-        sleep(1000 * 60)
-        handler.close()
 
-//        Class.forName(properties.driverClassName)
-//        20.times {
-//            Thread.start {
-//                def connection = DriverManager.getConnection(properties.url, properties.username, properties.password)
-//                def s = System.currentTimeMillis()
-//                println "search start time: $s"
-//                def statement = connection.prepareStatement("SELECT * FROM cccc")
-//                def query = statement.executeQuery()
-//                def e = System.currentTimeMillis()
-//                println "search end time: $e"
-//                println "${Thread.currentThread().getName()}-cost: ${(e - s)/1000} s"
-//                connection.close()
-//            }
-//        }
-//        sleep(1000 * 60)
-
-
+        // 等待所有线程完成
+        threads.each { it.join() }
+        
+        println "=== 测试结束后的连接池状态 ==="
+        handler.printPoolStatus()
+        
+        // 等待一段时间观察连接回收
+        println "等待连接回收..."
+        sleep(10000)
+        
+        println "=== 连接回收后的连接池状态 ==="
+        handler.printPoolStatus()
+        
+        handler.close() // 关闭整个连接池
+        
+        println "=== 连接池关闭后的状态 ==="
+        handler.printPoolStatus()
 
     }
 }

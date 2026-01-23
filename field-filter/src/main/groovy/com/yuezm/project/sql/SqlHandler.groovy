@@ -20,6 +20,9 @@ abstract class SqlHandler {
 
     static Closure sqlHandlerFactory = null
     static BiFunction<String,Connection, SqlHandler> sqlHandlerFactory2 = null
+    static Closure sqlHandlerFactory3 = null
+    static BiFunction<String, DatasourceProperties, SqlHandler> sqlHandlerFactory4 = null
+
 //    protected Map<String, >datasourcePool =
 
     protected Wrapper selfWrapper
@@ -52,6 +55,20 @@ abstract class SqlHandler {
         }
         if(sqlHandlerFactory2){
             return sqlHandlerFactory2.apply(type, connection)
+        }
+        return null
+    }
+
+
+    static SqlHandler buildSql2(String type, DatasourceProperties datasourceProperties){
+        assert datasourceProperties != null : "connection is null"
+        assert type != null : "type is null"
+        assert type.trim() != "" : "type is empty"
+        if(sqlHandlerFactory3){
+            return sqlHandlerFactory3(type, datasourceProperties)
+        }
+        if(sqlHandlerFactory4){
+            return sqlHandlerFactory4.apply(type, datasourceProperties)
         }
         return null
     }
