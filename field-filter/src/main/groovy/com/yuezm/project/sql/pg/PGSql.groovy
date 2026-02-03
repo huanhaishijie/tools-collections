@@ -1,5 +1,6 @@
 package com.yuezm.project.sql.pg
 
+import com.yuezm.project.sql.FieldType
 import com.yuezm.project.sql.SqlHandler
 import com.yuezm.project.sql.TableField
 import com.yuezm.project.sql.TableInfo
@@ -280,6 +281,13 @@ class PGSql extends SqlHandler {
         }
         return info
     }
+
+
+    @Override
+    List<FieldType> supportFieldTypes(String type = null, String version = "15"){
+        return PGFieldType.getFieldTypes(type, version)
+    }
+
 
 
 }

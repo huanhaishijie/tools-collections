@@ -21,7 +21,7 @@ class KingbaseSqlPool extends SqlPoolHandler{
     }
 
     @Override
-    Number getTableDataCapacity(String tableName, String schema) {
+    Number getTableDataCapacity(String tableName, String schema = null) {
         String sql = "SELECT pg_total_relation_size('$tableName') AS total_size".toString()
         return firstRow(sql)?["total_size"] as Number
     }
@@ -159,7 +159,7 @@ class KingbaseSqlPool extends SqlPoolHandler{
     }
 
     @Override
-    List<Map<String, Object>> getTablePrimarys(String tableName, String schema) {
+    List<Map<String, Object>> getTablePrimarys(String tableName, String schema = null) {
         String sql = "SELECT kcu.column_name \"COLUMN_NAME\" " +
                 "FROM information_schema.table_constraints tc\n" +
                 "JOIN information_schema.key_column_usage kcu\n" +
@@ -172,7 +172,7 @@ class KingbaseSqlPool extends SqlPoolHandler{
     }
 
     @Override
-    TableInfo getTableInfo(String tableName, String schema) {
+    TableInfo getTableInfo(String tableName, String schema = null) {
         def info = new TableInfo()
         String sql = "SELECT\n" +
                 "    obj_description(relfilenode, 'pg_class') AS table_comment\n" +

@@ -1,6 +1,7 @@
 package com.yuezm.project.sql.doris
 
 import com.yuezm.project.sql.DatasourceProperties
+import com.yuezm.project.sql.FieldType
 import com.yuezm.project.sql.SqlLocalPoolHandler
 import com.yuezm.project.sql.TableField
 import com.yuezm.project.sql.TableInfo
@@ -218,4 +219,11 @@ class DorisSqlLocalPool extends SqlLocalPoolHandler{
         return t
 
     }
+
+    @Override
+    List<FieldType> supportFieldTypes(String type = null, String version = "3.x") {
+        return DorisFieldType.getFieldTypes(type, version)
+    }
+
+
 }

@@ -2,6 +2,7 @@ package com.yuezm.project.sql.pg
 
 import com.yuezm.project.connector.proto.RowSet
 import com.yuezm.project.sql.DatasourceProperties
+import com.yuezm.project.sql.FieldType
 import com.yuezm.project.sql.SqlPoolHandler
 import com.yuezm.project.sql.TableField
 import com.yuezm.project.sql.TableInfo
@@ -178,7 +179,7 @@ class PGSqlPool extends SqlPoolHandler {
     //TODO 未实现
 
     @Override
-    TableInfo getTableInfo(String tableName, String schema) {
+    TableInfo getTableInfo(String tableName, String schema = null) {
         def info = new TableInfo()
         String sql = "SELECT\n" +
                 "    obj_description(relfilenode, 'pg_class') AS table_comment\n" +
@@ -363,6 +364,11 @@ class PGSqlPool extends SqlPoolHandler {
 //        println "res total:${res.size()} cost: ${(e - s)/1000} s"
         println "cost: ${(e - s)/1000} s"
 
+    }
+
+    @Override
+    List<FieldType> supportFieldTypes(String type = null, String version = "15"){
+        return PGFieldType.getFieldTypes(type, version)
     }
 
 

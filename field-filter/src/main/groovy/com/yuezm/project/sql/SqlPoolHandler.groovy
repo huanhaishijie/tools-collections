@@ -12,6 +12,7 @@ import groovy.json.JsonGenerator
 import groovy.json.JsonSlurper
 import groovy.sql.GroovyRowResult
 
+import java.sql.SQLException
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
@@ -222,7 +223,7 @@ abstract class SqlPoolHandler extends SqlHandler{
     }
 
     
-    boolean execute(String sql) {
+    boolean execute(String sql) throws SQLException{
         def dataSourceInfo = DataSourceInfo.newBuilder().setExec(
                 ExecInfo.newBuilder().setRequestInfo(
                         RequestInfo.newBuilder()

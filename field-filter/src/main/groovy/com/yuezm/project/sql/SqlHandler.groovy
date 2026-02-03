@@ -145,5 +145,9 @@ abstract class SqlHandler {
         return false
     }
 
+    List<FieldType> supportFieldTypes(String type = null, String version = null){
+        return []
+    }
+
 
 }

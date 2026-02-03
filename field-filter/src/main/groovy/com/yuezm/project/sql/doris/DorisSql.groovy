@@ -1,5 +1,6 @@
 package com.yuezm.project.sql.doris
 
+import com.yuezm.project.sql.FieldType
 import com.yuezm.project.sql.SqlHandler
 import com.yuezm.project.sql.TableField
 import com.yuezm.project.sql.TableInfo
@@ -18,6 +19,9 @@ import java.sql.Connection
  * @date 2025/12/18 14:14
  */
 class DorisSql extends SqlHandler {
+
+
+
     DorisSql(Connection connection) {
         super(connection)
     }
@@ -205,7 +209,6 @@ class DorisSql extends SqlHandler {
 
         def columns = rows(sql)
         def fields = columns?.collect { column ->
-
             return new TableField(
                     colName: column?["COLUMN_NAME"],
                     dataType: column?["COLUMN_TYPE"],
@@ -219,4 +222,12 @@ class DorisSql extends SqlHandler {
         return t
 
     }
+
+    @Override
+    List<FieldType> supportFieldTypes(String type = null, String version = "3.x") {
+        return DorisFieldType.getFieldTypes(type, version)
+    }
+
+
+
 }

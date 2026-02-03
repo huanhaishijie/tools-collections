@@ -1,5 +1,6 @@
 package com.yuezm.project.sql.oracle
 
+import com.yuezm.project.sql.FieldType
 import com.yuezm.project.sql.SqlHandler
 import com.yuezm.project.sql.TableField
 import com.yuezm.project.sql.TableInfo
@@ -228,4 +229,12 @@ class OracleSql extends SqlHandler {
         }
         return t
     }
+
+    @Override
+    List<FieldType> supportFieldTypes(String type = null, String version = "19c") {
+        return OracleFieldType.getFieldTypes(type, version)
+    }
+
+
+
 }

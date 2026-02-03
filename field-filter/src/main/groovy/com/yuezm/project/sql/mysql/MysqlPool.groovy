@@ -1,6 +1,7 @@
 package com.yuezm.project.sql.mysql
 
 import com.yuezm.project.sql.DatasourceProperties
+import com.yuezm.project.sql.FieldType
 import com.yuezm.project.sql.SqlPoolHandler
 import com.yuezm.project.sql.TableField
 import com.yuezm.project.sql.TableInfo
@@ -21,7 +22,7 @@ class MysqlPool extends SqlPoolHandler{
     }
 
     @Override
-    Number getTableDataCapacity(String tableName, String schema) {
+    Number getTableDataCapacity(String tableName, String schema = null) {
         String sql = "SELECT " +
                 "    ROUND((data_length + index_length) , 2) AS `total` " +
                 "FROM information_schema.TABLES " +
@@ -164,7 +165,7 @@ class MysqlPool extends SqlPoolHandler{
     }
 
     @Override
-    List<Map<String, Object>> getTablePrimarys(String tableName, String schema) {
+    List<Map<String, Object>> getTablePrimarys(String tableName, String schema = null) {
         String sql ="SELECT\n" +
                 "    COLUMN_NAME \n" +
                 "FROM information_schema.KEY_COLUMN_USAGE\n" +
@@ -176,7 +177,7 @@ class MysqlPool extends SqlPoolHandler{
     }
 
     @Override
-    TableInfo getTableInfo(String tableName, String schema) {
+    TableInfo getTableInfo(String tableName, String schema = null) {
         String sql = "select TABLE_SCHEMA,TABLE_COMMENT from information_schema.TABLES  where TABLE_NAME = '$tableName' and TABLE_SCHEMA = '$schema'"
         def tableInfo = firstRow(sql)
         if(tableInfo == null){
@@ -214,4 +215,11 @@ class MysqlPool extends SqlPoolHandler{
         t.fields = fields
         return t
     }
+
+    @Override
+    List<FieldType> supportFieldTypes(String type = null, String version = "8.0") {
+        return MySqlFieldType.getFieldTypes(type, version)
+    }
+
+
 }

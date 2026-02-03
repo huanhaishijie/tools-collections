@@ -323,4 +323,11 @@ class PGSqlLocalPool extends SqlLocalPoolHandler{
         handler.printPoolStatus()
 
     }
+
+    @Override
+    List<FieldType> supportFieldTypes(String type = null, String version = "15"){
+        return PGFieldType.getFieldTypes(type, version)
+    }
+
+
 }

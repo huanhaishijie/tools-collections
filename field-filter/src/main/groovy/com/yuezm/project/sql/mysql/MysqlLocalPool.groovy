@@ -1,6 +1,7 @@
 package com.yuezm.project.sql.mysql
 
 import com.yuezm.project.sql.DatasourceProperties
+import com.yuezm.project.sql.FieldType
 import com.yuezm.project.sql.SqlLocalPoolHandler
 import com.yuezm.project.sql.TableField
 import com.yuezm.project.sql.TableInfo
@@ -217,5 +218,10 @@ class MysqlLocalPool extends SqlLocalPoolHandler{
 
         t.fields = fields
         return t
+    }
+
+    @Override
+    List<FieldType> supportFieldTypes(String type = null, String version = "8.0") {
+        return MySqlFieldType.getFieldTypes(type, version)
     }
 }

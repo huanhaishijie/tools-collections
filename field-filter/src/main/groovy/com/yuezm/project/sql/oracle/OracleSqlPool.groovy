@@ -1,6 +1,7 @@
 package com.yuezm.project.sql.oracle
 
 import com.yuezm.project.sql.DatasourceProperties
+import com.yuezm.project.sql.FieldType
 import com.yuezm.project.sql.SqlPoolHandler
 import com.yuezm.project.sql.TableField
 import com.yuezm.project.sql.TableInfo
@@ -23,7 +24,7 @@ class OracleSqlPool extends SqlPoolHandler{
     }
 
     @Override
-    Number getTableDataCapacity(String tableName, String schema) {
+    Number getTableDataCapacity(String tableName, String schema = null) {
         String sql = " SELECT \n" +
                 "    SUM(bytes)  size_mb\n" +
                 "FROM \n" +
@@ -169,7 +170,7 @@ class OracleSqlPool extends SqlPoolHandler{
     }
 
     @Override
-    List<Map<String, Object>> getTablePrimarys(String tableName, String schema) {
+    List<Map<String, Object>> getTablePrimarys(String tableName, String schema = null) {
         String sql = "SELECT cols.column_name\n" +
                 "FROM user_constraints cons\n" +
                 "JOIN user_cons_columns cols\n" +
@@ -180,7 +181,7 @@ class OracleSqlPool extends SqlPoolHandler{
     }
 
     @Override
-    TableInfo getTableInfo(String tableName, String schema) {
+    TableInfo getTableInfo(String tableName, String schema = null) {
         String sql = "SELECT \n" +
                 "    TABLE_NAME, \n" +
                 "    COMMENTS \n" +
@@ -225,5 +226,10 @@ class OracleSqlPool extends SqlPoolHandler{
             }
         }
         return true
+    }
+
+    @Override
+    List<FieldType> supportFieldTypes(String type = null, String version = "19c") {
+        return OracleFieldType.getFieldTypes(type, version)
     }
 }

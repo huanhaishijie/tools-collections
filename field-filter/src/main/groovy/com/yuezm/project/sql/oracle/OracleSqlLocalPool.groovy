@@ -1,6 +1,7 @@
 package com.yuezm.project.sql.oracle
 
 import com.yuezm.project.sql.DatasourceProperties
+import com.yuezm.project.sql.FieldType
 import com.yuezm.project.sql.SqlLocalPoolHandler
 import com.yuezm.project.sql.TableField
 import com.yuezm.project.sql.TableInfo
@@ -225,5 +226,10 @@ class OracleSqlLocalPool extends SqlLocalPoolHandler{
                     defaultValue: column?["DATA_DEFAULT"])
         }
         return t
+    }
+
+    @Override
+    List<FieldType> supportFieldTypes(String type = null, String version = "19c") {
+        return OracleFieldType.getFieldTypes(type, version)
     }
 }

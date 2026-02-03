@@ -1,10 +1,12 @@
 package com.yuezm.project.sql.mysql
 
+import com.yuezm.project.sql.FieldType
 import com.yuezm.project.sql.SqlHandler
 import com.yuezm.project.sql.TableField
 import com.yuezm.project.sql.TableInfo
 import com.yuezm.project.sql.Wrapper
 import com.yuezm.project.sql.dm.DmWrapper
+import com.yuezm.project.sql.doris.DorisFieldType
 
 import javax.swing.table.TableColumn
 import java.sql.Connection
@@ -220,4 +222,11 @@ class MySql extends SqlHandler {
         return t
 
     }
+
+    @Override
+    List<FieldType> supportFieldTypes(String type = null, String version = "8.0") {
+        return MySqlFieldType.getFieldTypes(type, version)
+    }
+
+
 }
