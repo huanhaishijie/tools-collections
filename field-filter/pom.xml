@@ -8,14 +8,9 @@
     <artifactId>field-filter</artifactId>
     <version>1.0.0</version>
     <repositories>
-<!--        <repository>-->
-<!--            <id>yzm-central</id> &lt;!&ndash; 该 ID 应与您在 settings.xml 中配置的服务器 ID 匹配 &ndash;&gt;-->
-<!--            <url>http://47.109.156.230:13888/repository/internal/</url> &lt;!&ndash; 替换为您的仓库 URL &ndash;&gt;-->
-<!--        </repository>-->
         <repository>
-            <id>osgeo</id>
-            <name>OSGeo Release Repository</name>
-            <url>https://repo.osgeo.org/repository/release/</url>
+            <id>yzm-central</id> <!-- 该 ID 应与您在 settings.xml 中配置的服务器 ID 匹配 -->
+            <url>http://47.109.156.230:13888/repository/internal/</url> <!-- 替换为您的仓库 URL -->
         </repository>
     </repositories>
 
@@ -99,17 +94,12 @@
             <artifactId>protobuf-java</artifactId>
             <version>3.24.4</version>
         </dependency>
-        <dependency>
-            <groupId>org.postgresql</groupId>
-            <artifactId>postgresql</artifactId>
-            <version>42.5.4</version>
-        </dependency>
-        <dependency>
-            <groupId>org.geotools</groupId>
-            <artifactId>gt-main</artifactId>
-            <version>26.5</version>
-        </dependency>
 
+<!--        <dependency>-->
+<!--            <groupId>org.postgresql</groupId>-->
+<!--            <artifactId>postgresql</artifactId>-->
+<!--            <version>42.5.4</version>-->
+<!--        </dependency>-->
     </dependencies>
 
     <build>
@@ -178,3 +168,4 @@
 
 
 </project>
+
