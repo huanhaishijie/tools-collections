@@ -190,7 +190,7 @@ class DorisSql extends SqlHandler {
         if(tableInfo == null){
             return null
         }
-        def t = new TableInfo()
+        def t = new DorisTableInfo()
         t.tableName = tableInfo?["TABLE_SCHEMA"]
         t.comment = tableInfo?["TABLE_COMMENT"]
         sql = "SELECT \n" +
@@ -219,13 +219,19 @@ class DorisSql extends SqlHandler {
         }
 
         t.fields = fields
+        t.nodes = getNodes()
         return t
-
     }
 
     @Override
     List<FieldType> supportFieldTypes(String type = null, String version = "3.x") {
         return DorisFieldType.getFieldTypes(type, version)
+    }
+
+    private int getNodes() {
+        String sql = "SHOW BACKENDS;"
+        def rows = rows(sql)
+        return rows?.size() ?: 0
     }
 
 

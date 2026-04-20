@@ -73,11 +73,14 @@ class DorisWrapper extends Wrapper {
             return super.generateDdl(t, closure)
         }
         if (t == null) throw new IllegalArgumentException("tableInfo can't be null")
-        def ddl = " CREATE TABLE $t.tableName (\n"
+        def ddl = " CREATE TABLE IF NOT EXISTS $t.tableName (\n"
         String primary = ""
         List<String> pks = []
+        List<String> allColumns = []
+        
         t?.fields?.each { field ->
             super.validColName(field.colName)
+            allColumns << getColumn(field.colName)
             field.with {
                 switch (dataType.toLowerCase()) {
                     case "number":
@@ -122,7 +125,7 @@ class DorisWrapper extends Wrapper {
                 }
 
                 if (comment) {
-                    ddl += " COMMENT '$comment'"
+                    ddl += " COMMENT \"$comment\""
                 }
                 if (isPrimaryKey) {
                     pks << getColumn(colName)
@@ -131,18 +134,24 @@ class DorisWrapper extends Wrapper {
                 if (t.fields[-1] != it) {
                     ddl += ","
                 }
-
             }
         }
 
         if (pks.size() > 0) {
             ddl += ","
-            primary = "PRIMARY KEY (${pks.join(",")})"
+            primary = "\nUNIQUE KEY (${pks.join(",")})"
         }
-        ddl += " $primary )"
+        ddl += " ) $primary"
 
-        if (t?.comment) {
-            ddl += " COMMENT = '${t.comment}'"
+        // Add DISTRIBUTED BY clause - use first primary key as distribution key
+        if (pks.size() > 0) {
+            ddl += "\nDISTRIBUTED BY HASH(${pks.join(",")}) BUCKETS 10"
+        }
+
+        if(t instanceof DorisTableInfo){
+            if(t.nodes != 3){
+                ddl += "\n PROPERTIES (\"replication_allocation\" = \"tag.location.default: $t.nodes\") ".toString()
+            }
         }
         ddl += ";"
         return ddl

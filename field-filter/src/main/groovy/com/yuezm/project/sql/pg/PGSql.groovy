@@ -157,7 +157,7 @@ class PGSql extends SqlHandler {
                 break
             case "Geometry":
             case "geometry":
-                sqlType = "text"
+                sqlType = "\"public\".GEOMETRY(GEOMETRY, 4490)"
                 break
             default:
                 throw new IllegalArgumentException("Unsupported Java type: ${javaType}")
