@@ -195,6 +195,7 @@ class KingbaseSqlLocalPool extends SqlLocalPoolHandler{
                 "    c.data_type,\n" +
                 "    c.character_maximum_length,\n" +
                 "    c.numeric_precision,\n" +
+                "    c.datetime_precision,\n" +
                 "    c.numeric_scale,\n" +
                 "    c.is_nullable,\n" +
                 "    c.column_default,\n" +
@@ -218,9 +219,16 @@ class KingbaseSqlLocalPool extends SqlLocalPoolHandler{
                 "       )\n" +
                 "WHERE c.table_name = '$tableName'\n" +
                 "  AND c.table_schema = '$schema'\n" +
-                "ORDER BY c.ordinal_position;".toString()
+                "ORDER BY c.ordinal_position;"
         def results = rows(sql)
         info.fields = results.collect {
+            def length = it["character_maximum_length"] as Integer
+            if(!length){
+                length = it["numeric_precision"] as Integer
+            }
+            if(!length){
+                length = it["datetime_precision"] as Integer
+            }
             return new TableField(
                     colName: it["column_name"],
                     dataType: it["data_type"],
@@ -228,7 +236,7 @@ class KingbaseSqlLocalPool extends SqlLocalPoolHandler{
                     isNullable: it["is_nullable"] == "YES",
                     defaultValue: it["column_default"],
                     scale: it["numeric_scale"] as Integer,
-                    length: it["character_maximum_length"] as Integer,
+                    length: length,
                     isPrimaryKey: it["is_primary_key"] == "YES"
             )
         }

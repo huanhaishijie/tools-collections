@@ -204,10 +204,25 @@ class DorisSqlPool extends SqlPoolHandler{
 
         def columns = rows(sql)
         def fields = columns?.collect { column ->
-
+            def dataType = column?["COLUMN_TYPE"] as String
+            def length = null
+            def scale = null
+            if(dataType.contains(")") && dataType.contains("(") ){
+                def params = dataType.substring(dataType.indexOf("(") + 1, dataType.indexOf(")"))
+                dataType = dataType[0.. dataType.indexOf("(") - 1]
+                if(params.contains(",")){
+                    def parts = params.split(",")
+                    length = parts[0]?.trim()?.toInteger()
+                    scale = parts[1]?.trim()?.toInteger()
+                } else {
+                    length = params?.trim()?.toInteger()
+                }
+            }
             return new TableField(
                     colName: column?["COLUMN_NAME"],
-                    dataType: column?["COLUMN_TYPE"],
+                    dataType: dataType,
+                    length: length,
+                    scale: scale,
                     comment: column?["COLUMN_COMMENT"],
                     isNullable: column?["IS_NULLABLE"]?.toString() == "NO",
                     isPrimaryKey: column?["COLUMN_KEY"]?.toString() == "PRI",

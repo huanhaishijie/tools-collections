@@ -37,7 +37,33 @@ class MysqlLocalPool extends SqlLocalPoolHandler{
 
     @Override
     boolean isSupportGis() {
-        return false
+        boolean isSupportGis = false
+        try {
+            String querySql = "DROP TABLE IF EXISTS test_geom;\n" +
+                    "\n" +
+                    "CREATE TABLE test_geom (\n" +
+                    "    id INT PRIMARY KEY,\n" +
+                    "    geom GEOMETRY NOT NULL SRID 4326\n" +
+                    ") ENGINE=InnoDB;\n" +
+                    "\n" +
+                    "INSERT INTO test_geom VALUES (\n" +
+                    "    1,\n" +
+                    "    ST_GeomFromText('POINT(1 1)', 4326)\n" +
+                    ");\n" +
+                    "\n" +
+                    "CREATE SPATIAL INDEX idx_geom ON test_geom (geom);\n" +
+                    "\n" +
+                    "SELECT ST_AsText(geom) FROM test_geom;"
+
+            execute(querySql)
+            isSupportGis = true
+        }catch (Exception e){
+            e.printStackTrace()
+            isSupportGis = false
+        }finally {
+            execute("DROP TABLE IF EXISTS test_geom;")
+        }
+        return isSupportGis
     }
 
     @Override
@@ -128,7 +154,7 @@ class MysqlLocalPool extends SqlLocalPoolHandler{
                 break
             case "Geometry":
             case "geometry":
-                sqlType = "TEXT"
+                sqlType = "geometry"
                 break
             default:
                 throw new IllegalArgumentException("Unsupported Java type: ${javaType}")
@@ -206,10 +232,25 @@ class MysqlLocalPool extends SqlLocalPoolHandler{
 
         def columns = rows(sql)
         def fields = columns?.collect { column ->
-
+            def dataType = column?["COLUMN_TYPE"] as String
+            def length = null
+            def scale = null
+            if(dataType.contains(")") && dataType.contains("(") ){
+                def params = dataType.substring(dataType.indexOf("(") + 1, dataType.indexOf(")"))
+                dataType = dataType[0.. dataType.indexOf("(") - 1]
+                if(params.contains(",")){
+                    def parts = params.split(",")
+                    length = parts[0]?.trim()?.toInteger()
+                    scale = parts[1]?.trim()?.toInteger()
+                } else {
+                    length = params?.trim()?.toInteger()
+                }
+            }
             return new TableField(
                     colName: column?["COLUMN_NAME"],
-                    dataType: column?["COLUMN_TYPE"],
+                    dataType: dataType,
+                    length: length,
+                    scale: scale,
                     comment: column?["COLUMN_COMMENT"],
                     isNullable: column?["IS_NULLABLE"]?.toString() == "NO",
                     isPrimaryKey: column?["COLUMN_KEY"]?.toString() == "PRI",

@@ -118,6 +118,11 @@ class MySqlWrapper extends Wrapper {
                 } else {
                     if (dataType.equalsIgnoreCase("timestamp")) {
 //                        ddl += " DEFAULT CURRENT_TIMESTAMP"
+                        ddl += " DEFAULT CURRENT_TIMESTAMP "
+                    }
+                    def defaultNUll = ["json", "text", "geometry"]
+                    if(defaultNUll.contains(dataType.toLowerCase())){
+                        ddl += "  NULL "
                     }
                 }
 

@@ -187,7 +187,7 @@ class PGSqlPool extends SqlPoolHandler {
                 "WHERE relname = '$tableName'\n" +
                 "  AND relnamespace = (SELECT oid FROM pg_namespace WHERE nspname = '$schema');"
         def row = firstRow(sql)
-        if (row) {
+        if(row){
             info.comment = row?["table_comment"]
         }
         sql = "SELECT\n" +
@@ -196,6 +196,7 @@ class PGSqlPool extends SqlPoolHandler {
                 "    c.data_type,\n" +
                 "    c.character_maximum_length,\n" +
                 "    c.numeric_precision,\n" +
+                "    c.datetime_precision,\n" +
                 "    c.numeric_scale,\n" +
                 "    c.is_nullable,\n" +
                 "    c.column_default,\n" +
@@ -222,6 +223,13 @@ class PGSqlPool extends SqlPoolHandler {
                 "ORDER BY c.ordinal_position;"
         def results = rows(sql)
         info.fields = results.collect {
+            def length = it["character_maximum_length"] as Integer
+            if(!length){
+                length = it["numeric_precision"] as Integer
+            }
+            if(!length){
+                length = it["datetime_precision"] as Integer
+            }
             return new TableField(
                     colName: it["column_name"],
                     dataType: it["data_type"],
@@ -229,7 +237,7 @@ class PGSqlPool extends SqlPoolHandler {
                     isNullable: it["is_nullable"] == "YES",
                     defaultValue: it["column_default"],
                     scale: it["numeric_scale"] as Integer,
-                    length: it["character_maximum_length"] as Integer,
+                    length: length,
                     isPrimaryKey: it["is_primary_key"] == "YES"
             )
         }
