@@ -29,13 +29,9 @@ class GbdReader {
         }
         return layers
     }
-    static boolean toDatabase(String dsType = "PostgreSQL",
-                              DbConfig dbConfig,
+    static boolean toDatabase(DbConfig dbConfig,
                               String gdalRoot,
                               String gdbPath, String layerName, String newTableName = null){
-        if(!dbConfig.dbType){
-            dbConfig.dbType = dsType
-        }
         if(dbConfig.dbType.toLowerCase() == "postgresql"){
             toPGDatabase(dbConfig, gdalRoot, gdbPath, layerName, newTableName)
         }
@@ -100,7 +96,7 @@ class GbdReader {
                 "-makevalid",
                 "-a_srs", "EPSG:4326",
                 "-lco", "ENGINE=InnoDB",
-                "-lco", "SPATIAL_INDEX=YES",
+                "-lco", "SPATIAL_INDEX=FALSE",
                 "-lco", "ENCODING=UTF-8",
                 "-nln", newTableName,
                 "MYSQL:${dbConfig.dbname},host=${dbConfig.host},port=${dbConfig.port},user=${dbConfig.user},password=${dbConfig.password}".toString(),
