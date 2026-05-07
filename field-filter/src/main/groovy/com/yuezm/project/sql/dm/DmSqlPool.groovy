@@ -228,6 +228,9 @@ class DmSqlPool extends SqlPoolHandler{
         return true
     }
 
+    @Override
+    void renameTableColumn(String schema = null, String tableName, String oldColumnName, String newColumnName) {
 
+    }
 
 }

@@ -262,5 +262,29 @@ class MysqlPool extends SqlPoolHandler{
         return MySqlFieldType.getFieldTypes(type, version)
     }
 
+    @Override
+    void renameTableColumn(String schema = null, String tableName, String oldColumnName, String newColumnName) {
+        def info = getTableInfo(tableName)
+        def f = info.fields.find { it.colName == oldColumnName }
+        if(!f){
+            throw new IllegalArgumentException("Column $oldColumnName not found in table $tableName")
+        }
+        String sql = "ALTER TABLE ${wrapper.getColumn(tableName)} CHANGE ${wrapper.getColumn oldColumnName} ${wrapper.getColumn newColumnName} "
+        sql += f.getDataType()
+        if(f.getLength()){
+            sql += "(${f.getLength()}"
+            if(f.getScale()){
+                sql += ",${f.getScale()}"
+            }
+            sql += ") "
+        }
+        if(f.getIsNullable() != null && !f.getIsNullable()){
+            sql += "NOT NULL "
+        }else {
+            sql += "NULL "
+        }
+        println "alert ddl: $sql"
+        execute(sql)
+    }
 
 }

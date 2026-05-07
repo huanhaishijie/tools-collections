@@ -239,7 +239,10 @@ class DorisSqlPool extends SqlPoolHandler{
         return DorisFieldType.getFieldTypes(type, version)
     }
 
+    @Override
+    void renameTableColumn(String schema = null, String tableName, String oldColumnName, String newColumnName) {
 
+    }
 
 
 

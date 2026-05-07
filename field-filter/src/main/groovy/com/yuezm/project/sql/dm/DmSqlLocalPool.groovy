@@ -227,4 +227,9 @@ class DmSqlLocalPool extends SqlLocalPoolHandler{
         }
         return true
     }
+    
+    @Override
+    void renameTableColumn(String schema = null, String tableName, String oldColumnName, String newColumnName) {
+
+    }
 }

@@ -33,11 +33,12 @@ class GbdReader {
                               String gdalRoot,
                               String gdbPath, String layerName, String newTableName = null){
         if(dbConfig.dbType.toLowerCase() == "postgresql"){
-            toPGDatabase(dbConfig, gdalRoot, gdbPath, layerName, newTableName)
+            return toPGDatabase(dbConfig, gdalRoot, gdbPath, layerName, newTableName)
         }
         if(dbConfig.dbType.toLowerCase() == "mysql"){
-            toMysqlDatabase(dbConfig, gdalRoot, gdbPath, layerName, newTableName)
+            return toMysqlDatabase(dbConfig, gdalRoot, gdbPath, layerName, newTableName)
         }
+        return false
 
     }
 

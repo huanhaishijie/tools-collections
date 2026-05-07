@@ -244,4 +244,9 @@ class KingbaseSql extends SqlHandler{
         }
         return info
     }
+
+    @Override
+    void renameTableColumn(String schema = null, String tableName, String oldColumnName, String newColumnName) {
+
+    }
 }

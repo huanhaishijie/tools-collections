@@ -250,6 +250,10 @@ class DorisSql extends SqlHandler {
         return rows?.size() ?: 0
     }
 
+    @Override
+    void renameTableColumn(String schema = null, String tableName, String oldColumnName, String newColumnName) {
+
+    }
 
 
 }

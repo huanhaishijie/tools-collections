@@ -192,5 +192,4 @@ class MySqlFieldType extends FieldType{
         // 如果没有找到映射，返回原类型
         return originalType
     }
-
 }

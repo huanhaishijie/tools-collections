@@ -234,7 +234,11 @@ class OracleSql extends SqlHandler {
     List<FieldType> supportFieldTypes(String type = null, String version = "19c") {
         return OracleFieldType.getFieldTypes(type, version)
     }
+    
+    @Override
+    void renameTableColumn(String schema = null, String tableName, String oldColumnName, String newColumnName) {
 
+    }
 
 
 }

@@ -380,4 +380,9 @@ class PGSqlPool extends SqlPoolHandler {
     }
 
 
+    @Override
+    void renameTableColumn(String schema = null, String tableName, String oldColumnName, String newColumnName) {
+        String sql = "ALTER TABLE ${wrapper.getColumn(tableName)} RENAME COLUMN ${wrapper.getColumn(oldColumnName)} TO ${wrapper.getColumn(newColumnName)} "
+        execute(sql)
+    }
 }
